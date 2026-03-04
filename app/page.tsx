@@ -41,7 +41,7 @@ export default function HomePage() {
       <div className="w-full max-w-md space-y-10">
         {/* Logo + tagline */}
         <div className="text-center space-y-3">
-          <h1 className="text-6xl font-bold tracking-tight text-gray-900">Queue</h1>
+          <h1 className="text-6xl font-bold tracking-tight text-gray-900">Query</h1>
           <p className="text-lg text-gray-500">Smarter Q&amp;A for live events</p>
         </div>
 

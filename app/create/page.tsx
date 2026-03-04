@@ -64,7 +64,7 @@ export default function CreatePage() {
         {/* Header */}
         <div className="space-y-1">
           <a href="/" className="text-2xl font-bold text-gray-900 hover:opacity-80 transition-opacity">
-            Queue
+            Query
           </a>
           <h2 className="text-2xl font-semibold text-gray-900 pt-2">Host a Session</h2>
           <p className="text-sm text-gray-500">Set up your live Q&amp;A session.</p>

@@ -202,7 +202,7 @@ export default function JoinPage() {
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
           <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity shrink-0">
-            Queue
+            Query
           </a>
           <h1 className="text-lg font-semibold text-gray-800 truncate">{session.title}</h1>
         </div>

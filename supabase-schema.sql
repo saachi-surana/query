@@ -1,4 +1,4 @@
--- Queue App - Supabase Schema
+-- Query App - Supabase Schema
 -- Run this in your Supabase SQL Editor
 
 -- Sessions table

@@ -307,7 +307,7 @@ export default function ModeratorPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4">
           <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity shrink-0">
-            Queue
+            Query
           </a>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-gray-900 truncate">{session.title}</h1>

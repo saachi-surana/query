@@ -1,4 +1,4 @@
-# Queue — Smarter Q&A for Live Events
+# Query — Smarter Q&A for Live Events
 
 A smart live Q&A platform with AI-powered question clustering. Attendees submit questions; the moderator sees them automatically grouped into topic clusters with AI-generated summary questions — in real time.
 
