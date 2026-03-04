@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Queue — Smarter Q&A for Live Events
 
-## Getting Started
+A smart live Q&A platform with AI-powered question clustering. Attendees submit questions; the moderator sees them automatically grouped into topic clusters with AI-generated summary questions — in real time.
 
-First, run the development server:
+---
+
+## Tech Stack
+
+- **Next.js 14** (App Router)
+- **Supabase** — PostgreSQL database + real-time subscriptions
+- **Anthropic API** (`claude-haiku-4-5-20251001`) — AI clustering
+- **Tailwind CSS** — styling
+
+---
+
+## Setup
+
+### 1. Clone & install dependencies
+
+```bash
+npm install
+```
+
+### 2. Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project.
+2. In the Supabase dashboard, open the **SQL Editor**.
+3. Paste the contents of `supabase-schema.sql` and run it.
+
+This creates the `sessions`, `questions`, and `clusters` tables and enables real-time.
+
+### 3. Add environment variables
+
+Copy the example file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then open `.env.local` and fill in your values:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+ANTHROPIC_API_KEY=sk-ant-your-key
+```
+
+- **Supabase URL & anon key**: found in your Supabase project under **Settings → API**.
+- **Anthropic API key**: get one at [console.anthropic.com](https://console.anthropic.com).
+
+> **Note:** If `ANTHROPIC_API_KEY` is missing or set to `sk-ant-placeholder`, the app still works — questions will just appear in the "Unclustered" section without AI grouping.
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How It Works
 
-## Learn More
+### Attendee Flow
+1. Visit the home page, enter the 6-character join code → `/join/[code]`
+2. Type a question (500-char limit with live counter)
+3. As-you-type similarity search suggests existing questions to upvote instead
+4. Submit → question appears in real time on the moderator dashboard
 
-To learn more about Next.js, take a look at the following resources:
+### Moderator Flow
+1. Click "Host a Session" → fill in title + optional description → `/session/[code]`
+2. Share the join code/link with attendees
+3. As questions arrive, they're automatically clustered by AI topic
+4. Each cluster shows a generated summary question
+5. Mark individual questions or entire clusters as answered
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Clustering
+Every new question triggers a call to `/api/cluster`, which:
+1. Fetches existing unanswered clusters for this session
+2. Calls `claude-haiku` to decide: add to existing cluster or create a new one
+3. Updates the question's `cluster_id` in Supabase
+4. If added to an existing cluster, regenerates the cluster's summary question
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/
+  page.tsx                  # Home — join or host
+  create/page.tsx           # Create a new session
+  join/[code]/page.tsx      # Attendee view
+  session/[code]/page.tsx   # Moderator dashboard
+  api/cluster/route.ts      # Clustering API endpoint
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+lib/
+  supabase.ts               # Supabase client + types
+  clustering.ts             # AI clustering logic
+
+supabase-schema.sql         # Database schema
+.env.local.example          # Environment variable template
+```
