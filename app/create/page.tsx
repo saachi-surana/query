@@ -18,6 +18,7 @@ export default function CreatePage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [startsAt, setStartsAt] = useState('')
+  const [autoSuggest, setAutoSuggest] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -38,6 +39,7 @@ export default function CreatePage() {
           title: title.trim(),
           description: description.trim() || null,
           starts_at: startsAt || null,
+          auto_suggest: autoSuggest,
         })
         .select('code')
         .single()
@@ -128,6 +130,19 @@ export default function CreatePage() {
               Set a future start time to collect questions before the session begins.
             </p>
           </div>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSuggest}
+              onChange={(e) => setAutoSuggest(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700">AI Auto-Suggest Answers</span>
+              <p className="text-xs text-gray-400">AI will automatically draft suggested answers for each question. You can toggle this on/off during the session.</p>
+            </div>
+          </label>
 
           <button
             type="submit"

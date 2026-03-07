@@ -452,6 +452,13 @@ export default function ModeratorPage() {
     setModerationBannerDismissed(false)
   }
 
+  async function toggleAutoSuggest() {
+    if (!session) return
+    const newValue = !session.auto_suggest
+    await supabase.from('sessions').update({ auto_suggest: newValue }).eq('id', session.id)
+    setSession({ ...session, auto_suggest: newValue })
+  }
+
   async function approveQuestion(questionId: string) {
     await supabase.from('questions').update({ approved: true }).eq('id', questionId)
     // Trigger clustering for the newly approved question
@@ -692,6 +699,19 @@ export default function ModeratorPage() {
               }`}
             >
               {session.moderation_enabled ? 'Moderation: On' : 'Moderation: Off'}
+            </button>
+            <button
+              onClick={toggleAutoSuggest}
+              title={session.auto_suggest
+                ? 'Click to turn off — AI will stop suggesting answers'
+                : 'Click to turn on — AI will auto-suggest answers for new questions'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                session.auto_suggest
+                  ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              {session.auto_suggest ? 'AI Suggest: On' : 'AI Suggest: Off'}
             </button>
             {session.ended_at ? (
               <button

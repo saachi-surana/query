@@ -33,10 +33,10 @@ export async function POST(req: NextRequest) {
       .eq('session_id', sessionId)
       .eq('status', 'unanswered')
 
-    // Fetch session description for context
+    // Fetch session for description and auto_suggest setting
     const { data: session } = await supabase
       .from('sessions')
-      .select('description')
+      .select('description, auto_suggest')
       .eq('id', sessionId)
       .single()
 
@@ -47,6 +47,17 @@ export async function POST(req: NextRequest) {
       sessionId,
       session?.description ?? null
     )
+
+    // Auto-suggest answer if enabled
+    if (session?.auto_suggest) {
+      const origin = req.headers.get('origin') || req.headers.get('host') || 'http://localhost:3000'
+      const baseUrl = origin.startsWith('http') ? origin : `http://${origin}`
+      fetch(`${baseUrl}/api/suggest-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, sessionId }),
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch {

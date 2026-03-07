@@ -2,30 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
-
 export async function POST(req: NextRequest) {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || key === 'sk-ant-placeholder') {
+    return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
+  }
+
   try {
     const { questionId, sessionId } = await req.json()
     if (!questionId || !sessionId) {
       return NextResponse.json({ error: 'Missing params' }, { status: 400 })
     }
 
-    const key = process.env.ANTHROPIC_API_KEY
-    if (!key || key === 'sk-ant-placeholder') {
-      return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
-    }
-
     // Get question text
-    const { data: question } = await supabase
+    const { data: question, error: qErr } = await supabase
       .from('questions')
       .select('text')
       .eq('id', questionId)
       .single()
-    if (!question) {
-      return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+    if (qErr || !question) {
+      return NextResponse.json({ error: `Question not found: ${qErr?.message}` }, { status: 404 })
     }
 
     // Get session context
@@ -35,16 +31,22 @@ export async function POST(req: NextRequest) {
       .eq('id', sessionId)
       .single()
 
-    // Get existing FAQ entries for context
-    const { data: faqs } = await supabase
-      .from('faq_entries')
-      .select('summary_question, answer')
-      .eq('session_id', sessionId)
-      .limit(10)
+    // Get existing FAQ entries for context (may not exist yet, that's ok)
+    let faqContext = ''
+    try {
+      const { data: faqs } = await supabase
+        .from('faq_entries')
+        .select('summary_question, answer')
+        .eq('session_id', sessionId)
+        .limit(10)
+      if (faqs && faqs.length > 0) {
+        faqContext = '\n\nPrevious FAQ answers from this session:\n' + faqs.map((f) => `Q: ${f.summary_question}\nA: ${f.answer}`).join('\n\n')
+      }
+    } catch {
+      // faq_entries table may not exist yet, ignore
+    }
 
-    const faqContext = faqs && faqs.length > 0
-      ? '\n\nPrevious FAQ answers from this session:\n' + faqs.map((f) => `Q: ${f.summary_question}\nA: ${f.answer}`).join('\n\n')
-      : ''
+    const anthropic = new Anthropic({ apiKey: key })
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -59,14 +61,20 @@ export async function POST(req: NextRequest) {
     const answer = message.content[0].type === 'text' ? message.content[0].text.trim() : ''
 
     if (answer) {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('questions')
         .update({ suggested_answer: answer })
         .eq('id', questionId)
+      if (updateErr) {
+        console.error('Failed to save suggested answer:', updateErr.message)
+        // Still return the answer even if save failed
+      }
     }
 
     return NextResponse.json({ success: true, answer })
-  } catch {
-    return NextResponse.json({ error: 'Failed to generate answer' }, { status: 500 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('suggest-answer error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

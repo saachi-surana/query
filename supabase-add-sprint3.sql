@@ -3,6 +3,9 @@
 -- Multi-moderator: cluster claiming
 alter table clusters add column if not exists claimed_by text;
 
+-- AI auto-suggest toggle on sessions
+alter table sessions add column if not exists auto_suggest boolean not null default false;
+
 -- AI auto-answering: suggested answers on questions
 alter table questions add column if not exists suggested_answer text;
 
