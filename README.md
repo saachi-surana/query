@@ -77,7 +77,7 @@ Open [http://localhost:3000](http://localhost:3000).
 10. After session ends, browse all Q&A and follow-up answers
 
 ### Moderator Flow
-1. Click "Host a Session" → fill in title + optional description + optional start time → `/session/[code]`
+1. Click "Host a Session" → fill in title, description, start time, recurrence, AI settings → `/session/[code]`
 2. Share the join code or join link with attendees
 3. As questions arrive, they're automatically clustered by AI topic
 4. Each cluster shows a generated summary question
@@ -94,6 +94,9 @@ Open [http://localhost:3000](http://localhost:3000).
 15. Use "AI Suggest" to get draft answers for questions
 16. Save answered clusters as FAQ entries for future reference
 17. View post-session report at `/report/[code]` with unanswered questions + FAQ library
+18. Use the floating Settings panel (bottom-right) to control moderation, AI suggest, export, and links
+19. Browse all sessions in the left sidebar (live, upcoming, past)
+20. Create recurring sessions (weekly, biweekly, monthly, or custom dates)
 
 ### Clustering
 Every new question triggers a call to `/api/cluster`, which:

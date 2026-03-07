@@ -15,6 +15,9 @@ export type Session = {
   highlighted_cluster_id: string | null
   ended_at: string | null
   starts_at: string | null
+  recurrence_type: string | null
+  recurrence_parent_id: string | null
+  recurrence_dates: string[] | null
   created_at: string
 }
 

@@ -73,6 +73,14 @@ do $$ begin
 end $$;
 
 -- ============================================================
+-- RECURRING SESSIONS (Sprint 4)
+-- ============================================================
+
+alter table sessions add column if not exists recurrence_type text;
+alter table sessions add column if not exists recurrence_parent_id uuid;
+alter table sessions add column if not exists recurrence_dates jsonb;
+
+-- ============================================================
 -- REALTIME
 -- ============================================================
 

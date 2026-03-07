@@ -360,6 +360,9 @@ export default function ModeratorPage() {
   const [unclusteredOpen, setUnclusteredOpen] = useState(true)
   const [answeredOpen, setAnsweredOpen] = useState(false)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [allSessions, setAllSessions] = useState<Session[]>([])
   const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
 
@@ -377,6 +380,19 @@ export default function ModeratorPage() {
     }
     load()
   }, [code])
+
+  // Load all sessions for sidebar
+  useEffect(() => {
+    async function loadSessions() {
+      const { data } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setAllSessions(data || [])
+    }
+    loadSessions()
+  }, [])
 
   // Load questions and clusters
   useEffect(() => {
@@ -632,7 +648,7 @@ export default function ModeratorPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Connection banner */}
       {!connected && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800 text-center">
@@ -669,89 +685,147 @@ export default function ModeratorPage() {
       )}
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex items-center gap-4">
-          <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity shrink-0">
-            Query
-          </a>
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sticky top-0 z-20">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setSidebarOpen((o) => !o)} className="sm:hidden shrink-0 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-gray-900 truncate">{session.title}</h1>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                {totalQuestions} question{totalQuestions !== 1 ? 's' : ''}
-              </span>
-              <span className="text-gray-300">·</span>
-              <span className="font-mono text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                {code}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden sm:inline font-mono text-sm font-semibold text-gray-700 bg-gray-100 px-2.5 py-1 rounded">
+              {code}
+            </span>
             <button
-              onClick={toggleModeration}
-              title={session.moderation_enabled
-                ? 'Click to turn off — questions will appear immediately'
-                : 'Click to turn on — you will approve questions before they appear'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                session.moderation_enabled
-                  ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}
+              onClick={copyCode}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             >
-              {session.moderation_enabled ? 'Moderation: On' : 'Moderation: Off'}
+              {codeCopied ? '✓ Copied!' : '⎘ Copy Code'}
             </button>
             <button
-              onClick={toggleAutoSuggest}
-              title={session.auto_suggest
-                ? 'Click to turn off — AI will stop suggesting answers'
-                : 'Click to turn on — AI will auto-suggest answers for new questions'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                session.auto_suggest
-                  ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}
+              onClick={copyLink}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             >
-              {session.auto_suggest ? 'AI Suggest: On' : 'AI Suggest: Off'}
+              {copied ? '✓ Copied!' : '⎘ Copy Link'}
             </button>
             {session.ended_at ? (
               <button
                 onClick={reopenSession}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors"
               >
-                Reopen Session
+                Reopen
               </button>
             ) : (
               <button
                 onClick={endSession}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors"
               >
                 End Session
               </button>
             )}
-            <button
-              onClick={exportCSV}
-              disabled={questions.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Export CSV
-            </button>
-            <button
-              onClick={copyCode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            >
-              {codeCopied ? '✓ Copied!' : '⎘ Copy Session Code'}
-            </button>
-            <button
-              onClick={copyLink}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            >
-              {copied ? '✓ Copied!' : '⎘ Copy Join Link'}
-            </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200 hidden sm:block`}>
+          <div className="p-4 space-y-6 w-64">
+            <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity block">
+              Query
+            </a>
+
+            {/* Live Sessions */}
+            {(() => {
+              const live = allSessions.filter((s) => !s.ended_at && (!s.starts_at || new Date(s.starts_at) <= new Date()))
+              if (live.length === 0) return null
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wide flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    Live ({live.length})
+                  </p>
+                  {live.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`/session/${s.code}`}
+                      className={`block px-3 py-2 rounded-lg text-sm truncate transition-colors ${
+                        s.code === code ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {s.title}
+                      <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                    </a>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Upcoming Sessions */}
+            {(() => {
+              const upcoming = allSessions.filter((s) => s.starts_at && new Date(s.starts_at) > new Date() && !s.ended_at)
+              if (upcoming.length === 0) return null
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Upcoming</p>
+                  {upcoming.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`/session/${s.code}`}
+                      className={`block px-3 py-2 rounded-lg text-sm truncate transition-colors ${
+                        s.code === code ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {s.title}
+                      <span className="block text-xs text-gray-400">
+                        {new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Past Sessions */}
+            {(() => {
+              const past = allSessions.filter((s) => s.ended_at).slice(0, 10)
+              if (past.length === 0) return null
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Past</p>
+                  {past.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`/report/${s.code}`}
+                      className="block px-3 py-2 rounded-lg text-sm truncate text-gray-500 hover:bg-gray-100 transition-colors"
+                    >
+                      {s.title}
+                      <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                    </a>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Bottom links */}
+            <div className="pt-4 border-t border-gray-200 space-y-1">
+              <a href="/create" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 font-medium transition-colors">
+                + New Session
+              </a>
+              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">
+                Profile (coming soon)
+              </div>
+              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">
+                Settings (coming soon)
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
         {/* Pending review queue */}
         {session.moderation_enabled && pendingReviewQuestions.length === 0 && totalQuestions > 0 && (
           <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 text-center text-sm text-amber-600">
@@ -1060,6 +1134,83 @@ export default function ModeratorPage() {
             )}
           </section>
         )}
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Settings Panel */}
+      <div className="fixed bottom-6 right-6 z-30">
+        {settingsOpen && (
+          <div className="absolute bottom-14 right-0 w-80 bg-white rounded-xl border border-gray-200 shadow-xl p-5 space-y-4 animate-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900 text-sm">Session Settings</h3>
+              <button onClick={() => setSettingsOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
+            </div>
+
+            {/* Moderation toggle */}
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Moderation</p>
+                <p className="text-xs text-gray-400">Approve questions before they appear</p>
+              </div>
+              <button
+                onClick={toggleModeration}
+                className={`relative w-10 h-6 rounded-full transition-colors ${session.moderation_enabled ? 'bg-amber-500' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${session.moderation_enabled ? 'translate-x-4' : ''}`} />
+              </button>
+            </label>
+
+            {/* AI Suggest toggle */}
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-gray-700">AI Auto-Suggest</p>
+                <p className="text-xs text-gray-400">Draft answers for new questions</p>
+              </div>
+              <button
+                onClick={toggleAutoSuggest}
+                className={`relative w-10 h-6 rounded-full transition-colors ${session.auto_suggest ? 'bg-purple-500' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${session.auto_suggest ? 'translate-x-4' : ''}`} />
+              </button>
+            </label>
+
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <button
+                onClick={() => { exportCSV(); setSettingsOpen(false) }}
+                disabled={questions.length === 0}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Export CSV
+              </button>
+              <a
+                href={`/report/${code}`}
+                target="_blank"
+                className="block px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                View Report
+              </a>
+              <a
+                href={`/present/${code}`}
+                target="_blank"
+                className="block px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Present Mode
+              </a>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setSettingsOpen((o) => !o)}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+            settingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
       </div>
     </main>
   )

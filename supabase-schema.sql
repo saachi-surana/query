@@ -12,6 +12,9 @@ create table if not exists sessions (
   highlighted_cluster_id uuid,
   ended_at timestamp with time zone,
   starts_at timestamp with time zone,
+  recurrence_type text,
+  recurrence_parent_id uuid,
+  recurrence_dates jsonb,
   created_at timestamp with time zone default now()
 );
 

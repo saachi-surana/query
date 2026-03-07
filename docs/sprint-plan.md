@@ -409,6 +409,160 @@ supabase-schema.sql                  # Updated schema
 
 ---
 
+---
+
+## Sprint 4: UI Rework + Dashboard + Recurring Sessions
+
+**Goal**: Rework the moderator UI for a professional, scalable layout. Add a persistent left sidebar with session management, move settings to a floating panel, and support recurring sessions.
+
+---
+
+### 4.1 Moderator Header Rework
+**Priority**: High — current header is too cluttered with too many buttons
+
+**What changes**:
+- **Left side**: "Query" logo + session title
+- **Center**: Session code badge + "Copy Session Code" + "Copy Join Link" (grouped together)
+- **Right side**: "End Session" / "Reopen Session" button (rightmost, prominent)
+- **Remove from header**: Moderation toggle, AI Suggest toggle, Export CSV, question count (move to settings panel + sidebar)
+
+**Current header buttons**: Moderation, AI Suggest, End Session, Export CSV, Copy Code, Copy Link, question count
+**New header**: Clean — just title, code, copy buttons, and end session
+
+**Estimated complexity**: Low-Medium
+
+---
+
+### 4.2 Floating Session Settings Panel
+**Priority**: High — declutter the header, give settings a proper home
+
+**What it is**: A small floating panel anchored to the bottom-right corner of the screen. Clicking a gear/settings button opens a compact card with session controls.
+
+**UI spec**:
+- Floating action button (FAB) in bottom-right: gear icon, labeled "Settings"
+- On click, opens a panel (320px wide, ~400px tall max) sliding up from the button
+- Panel title: "Session Settings"
+- Panel contents:
+  - **Moderation**: Toggle switch with label + description
+  - **AI Auto-Suggest**: Toggle switch with label + description
+  - **Export CSV**: Button
+  - **View Report**: Link to `/report/[code]` (opens in new tab)
+  - **Present Mode**: Link to `/present/[code]` (opens in new tab)
+- Panel has a close button (X) or clicking outside closes it
+- Visible on both active and ended sessions (so CSV export works post-session)
+- Subtle shadow + rounded corners, sits above page content (z-index)
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — remove header buttons, add floating panel
+
+**Estimated complexity**: Medium
+
+---
+
+### 4.3 Left Sidebar — Session Dashboard
+**Priority**: High — gives hosts a persistent navigation panel
+
+**What it is**: A vertical sidebar on the left side of the moderator page with:
+
+**Sidebar sections**:
+1. **Logo + Home link** at the top
+2. **Live Sessions** — list of currently active (not ended) sessions with their codes, clickable to navigate
+3. **Upcoming Sessions** — sessions with `starts_at` in the future, sorted by date
+4. **Past Sessions** — ended sessions (last 10), with links to report page
+5. **Profile** — placeholder section with user icon (empty for now, Sprint 5+)
+6. **Settings** — placeholder section (empty for now, Sprint 5+)
+
+**Data**: Loads all sessions from Supabase. No auth yet, so shows ALL sessions (in production, would be filtered by user). For now, this is acceptable.
+
+**Layout change**: The moderator page becomes a two-column layout:
+- Left: 256px fixed sidebar (collapsible on mobile)
+- Right: Existing moderator dashboard content (max-w-5xl)
+
+**Files to create/modify**:
+- `app/session/[code]/page.tsx` — wrap in sidebar layout
+- Consider: Create a shared `components/Sidebar.tsx` for reuse across pages
+
+**Estimated complexity**: Medium-High
+
+---
+
+### 4.4 Recurring Sessions
+**Priority**: Medium — important for university classes, weekly all-hands, etc.
+
+**What it is**: When creating a session, the host can set it to recur on a schedule. The system creates future session instances automatically.
+
+**Recurrence options**:
+- **None** (default — one-time session)
+- **Weekly** — same day of week, same time
+- **Biweekly** — every 2 weeks
+- **Monthly** — same day of month
+- **Custom dates** — pick specific dates from a date picker
+
+**Database changes**:
+- Add `recurrence_type text` to sessions (null, 'weekly', 'biweekly', 'monthly', 'custom')
+- Add `recurrence_parent_id uuid references sessions(id)` — links recurring instances to the original
+- Add `recurrence_dates jsonb` — for custom dates, stores array of ISO date strings
+
+**How it works**:
+1. Host creates a session with recurrence settings
+2. On create, the system generates future session instances (up to 12 weeks ahead for weekly, 6 months for monthly)
+3. Each instance is a separate session row with its own code, but linked via `recurrence_parent_id`
+4. The sidebar shows recurring sessions grouped together
+5. FAQ entries from previous instances carry forward (checked during AI suggest)
+
+**Create page changes**:
+- Add "Recurrence" section below start time
+- Radio buttons: None, Weekly, Biweekly, Monthly, Custom
+- For Custom: date multi-picker
+- Preview showing "This will create X sessions"
+
+**Estimated complexity**: High
+
+---
+
+### Sprint 4 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Moderator header rework | 1-2 hrs | Must do first — clears space for settings panel |
+| 2 | Floating settings panel | 2-3 hrs | Depends on header rework |
+| 3 | Left sidebar dashboard | 3-4 hrs | Independent but benefits from clean header |
+| 4 | Recurring sessions | 4-5 hrs | Most complex, builds on sidebar |
+
+**Total Sprint 4 estimate**: ~10-14 hrs of implementation
+
+---
+
+### Sprint 4 Database Changes
+
+```sql
+-- Recurring sessions
+alter table sessions add column if not exists recurrence_type text;
+alter table sessions add column if not exists recurrence_parent_id uuid references sessions(id) on delete set null;
+alter table sessions add column if not exists recurrence_dates jsonb;
+```
+
+---
+
+### Sprint 4 Files
+
+**New files**:
+```
+components/Sidebar.tsx              # Shared sidebar component
+components/SettingsPanel.tsx        # Floating settings panel
+```
+
+**Modified files**:
+```
+app/session/[code]/page.tsx         # Header rework, sidebar layout, settings panel
+app/create/page.tsx                 # Recurrence options
+lib/supabase.ts                     # Updated Session type
+supabase-schema.sql                 # Updated schema
+supabase-migrations.sql             # Add recurrence columns
+```
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)
