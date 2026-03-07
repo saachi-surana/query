@@ -29,11 +29,7 @@ npm install
 
 This creates the `sessions`, `questions`, `clusters`, and `replies` tables and enables real-time.
 
-> **Upgrading?** If you already have the database set up from an earlier version, run these migrations in order in the SQL Editor:
-> 1. `supabase-add-replies.sql` — adds the `replies` table
-> 2. `supabase-add-moderation.sql` — adds moderation support
-> 3. `supabase-add-sprint2.sql` — adds highlight, end session, pre-session start time
-> 4. `supabase-add-sprint3.sql` — adds claiming, suggested answers, FAQ library
+> **Upgrading from the base schema?** Run `supabase-migrations.sql` in the SQL Editor. It's a single consolidated file containing all migrations (replies, moderation, highlight, end session, AI suggest, FAQ library). Safe to re-run.
 
 ### 3. Add environment variables
 
@@ -126,9 +122,10 @@ lib/
   clustering.ts             # AI clustering logic
 
 supabase-schema.sql         # Full database schema (fresh setup)
-supabase-add-replies.sql    # Migration: replies table
-supabase-add-moderation.sql # Migration: moderation support
-supabase-add-sprint2.sql    # Migration: highlight, end session, start time
-supabase-add-sprint3.sql    # Migration: claiming, suggested answers, FAQ library
+supabase-migrations.sql     # Consolidated migrations (for existing DBs)
 .env.local.example          # Environment variable template
+docs/
+  competitive-analysis.md   # Slido research & market gaps
+  sprint-plan.md            # Feature roadmap & sprint specs
+  conversation-log.md       # Development conversation log
 ```
