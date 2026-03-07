@@ -114,21 +114,21 @@ export default function CreatePage() {
     router.push(`/session/${parentCode}`)
   }
 
-  const inputClasses = 'w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors'
+  const inputClasses = 'w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors'
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg space-y-8">
         <div className="space-y-1">
-          <a href="/" className="text-2xl font-bold text-gray-900 hover:opacity-80 transition-opacity">
+          <a href="/" className="text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity">
             Query
           </a>
-          <h2 className="text-2xl font-semibold text-gray-900 pt-2">Host a Session</h2>
-          <p className="text-sm text-gray-500">Set up your live Q&amp;A session.</p>
+          <h2 className="text-2xl font-semibold text-slate-900 pt-2">Host a Session</h2>
+          <p className="text-sm text-slate-500">Set up your live Q&amp;A session.</p>
         </div>
 
         {error && (
-          <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
@@ -136,7 +136,7 @@ export default function CreatePage() {
         <form onSubmit={handleCreate} className="space-y-6">
           {/* Title */}
           <div className="space-y-1.5">
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="title" className="block text-sm font-medium text-slate-700">
               Session Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -152,7 +152,7 @@ export default function CreatePage() {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="description" className="block text-sm font-medium text-slate-700">
               Description <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <textarea
@@ -163,12 +163,12 @@ export default function CreatePage() {
               rows={3}
               className={`${inputClasses} resize-none`}
             />
-            <p className="text-xs text-gray-400">Used by AI to better group questions into topics.</p>
+            <p className="text-xs text-slate-400">Used by AI to better group questions into topics.</p>
           </div>
 
           {/* Date + Time split */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-slate-700">
               Start Date & Time <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <div className="flex gap-3">
@@ -179,7 +179,7 @@ export default function CreatePage() {
                   const time = startsAt ? startsAt.split('T')[1] || '09:00' : '09:00'
                   setStartsAt(e.target.value ? `${e.target.value}T${time}` : '')
                 }}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="flex-1 px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors"
               />
               <input
                 type="time"
@@ -189,15 +189,15 @@ export default function CreatePage() {
                   if (date) setStartsAt(`${date}T${e.target.value}`)
                 }}
                 disabled={!startsAt}
-                className="w-32 px-4 py-3 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-40 transition-colors"
+                className="w-32 px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent disabled:opacity-40 transition-colors"
               />
             </div>
-            <p className="text-xs text-gray-400">Collect questions before the session starts.</p>
+            <p className="text-xs text-slate-400">Collect questions before the session starts.</p>
           </div>
 
           {/* Recurrence */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-slate-700">
               Recurrence <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -208,8 +208,8 @@ export default function CreatePage() {
                   onClick={() => setRecurrence(opt)}
                   className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
                     recurrence === opt
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                      ? 'bg-theme-primary text-white border-theme-primary shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-theme-primary-light hover:text-theme-primary'
                   }`}
                 >
                   {opt === 'none' ? 'One-time' : opt === 'biweekly' ? 'Every 2 weeks' : opt.charAt(0).toUpperCase() + opt.slice(1)}
@@ -224,20 +224,20 @@ export default function CreatePage() {
             )}
 
             {recurrence !== 'none' && startsAt && recurrence !== 'custom' && (
-              <p className="text-xs text-blue-700 bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100">
+              <p className="text-xs text-theme-primary-hover bg-theme-primary-subtle px-4 py-2.5 rounded-xl border border-theme-primary-light">
                 This will create {recurrence === 'monthly' ? '6' : '12'} future sessions ({recurrence === 'biweekly' ? 'every 2 weeks' : recurrence}).
               </p>
             )}
 
             {recurrence === 'custom' && (
-              <div className="space-y-3 bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Add session dates</p>
+              <div className="space-y-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add session dates</p>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     value={customDateInput ? customDateInput.split('T')[0] : ''}
                     onChange={(e) => setCustomDateInput(e.target.value ? `${e.target.value}T09:00` : '')}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
                   />
                   <button
                     type="button"
@@ -247,7 +247,7 @@ export default function CreatePage() {
                         setCustomDateInput('')
                       }
                     }}
-                    className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover transition-colors"
                   >
                     Add
                   </button>
@@ -255,20 +255,20 @@ export default function CreatePage() {
                 {customDates.length > 0 && (
                   <div className="space-y-1.5">
                     {customDates.map((d, i) => (
-                      <div key={i} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-2.5 text-sm">
-                        <span className="text-gray-700">
+                      <div key={i} className="flex items-center justify-between bg-white rounded-xl border border-slate-100 px-4 py-2.5 text-sm">
+                        <span className="text-slate-700">
                           {new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                         <button
                           type="button"
                           onClick={() => setCustomDates((prev) => prev.filter((_, j) => j !== i))}
-                          className="text-red-400 hover:text-red-600 transition-colors"
+                          className="text-rose-400 hover:text-rose-600 transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                       </div>
                     ))}
-                    <p className="text-xs text-gray-500 text-center pt-1">{customDates.length} additional session{customDates.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-slate-500 text-center pt-1">{customDates.length} additional session{customDates.length !== 1 ? 's' : ''}</p>
                   </div>
                 )}
               </div>
@@ -278,13 +278,13 @@ export default function CreatePage() {
           {/* AI toggle */}
           <div
             onClick={() => setAutoSuggest((v) => !v)}
-            className="flex items-center justify-between cursor-pointer bg-gray-50 rounded-2xl border border-gray-100 px-4 py-3.5 hover:border-gray-200 transition-colors"
+            className="flex items-center justify-between cursor-pointer bg-slate-50 rounded-2xl border border-slate-100 px-4 py-3.5 hover:border-slate-200 transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-gray-700">AI Auto-Suggest Answers</p>
-              <p className="text-xs text-gray-400 mt-0.5">Drafts answers for each question automatically.</p>
+              <p className="text-sm font-medium text-slate-700">AI Auto-Suggest Answers</p>
+              <p className="text-xs text-slate-400 mt-0.5">Drafts answers for each question automatically.</p>
             </div>
-            <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-3 ${autoSuggest ? 'bg-blue-600' : 'bg-gray-300'}`}>
+            <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-3 ${autoSuggest ? 'bg-theme-primary' : 'bg-slate-300'}`}>
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${autoSuggest ? 'translate-x-5' : ''}`} />
             </div>
           </div>
@@ -293,7 +293,7 @@ export default function CreatePage() {
           <button
             type="submit"
             disabled={loading || !title.trim()}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded-2xl font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
+            className="w-full py-3 px-4 bg-theme-primary text-white rounded-2xl font-medium text-sm hover:bg-theme-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
           >
             {loading && (
               <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">

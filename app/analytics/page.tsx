@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading analytics...</div>
+        <div className="animate-pulse text-slate-400">Loading analytics...</div>
       </main>
     )
   }
@@ -136,31 +136,38 @@ export default function AnalyticsPage() {
   const pastSessions = sessions.filter((s) => s.ended_at).slice(0, 10)
 
   return (
-    <main className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+    <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 shrink-0 z-20">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setSidebarOpen((o) => !o)} className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+      <header className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20">
+        <div className="absolute inset-0 bg-theme-mesh-base" />
+        <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
+        <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
+        <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
+        <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
+        <div className="relative flex items-baseline gap-4">
+          <button onClick={() => setSidebarOpen((o) => !o)} className="self-center shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+            <svg className="w-5 h-5" style={{ color: 'var(--theme-dark-accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity">Query</a>
+          <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity tracking-tight">Query</a>
+          <span className="text-white/30 text-lg font-light select-none">/</span>
+          <span className="text-lg font-medium" style={{ color: 'var(--theme-header-text-muted)' }}>Analytics</span>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200`}>
+        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200`}>
           <div className="p-4 space-y-6 w-64">
             {liveSessions.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-[0.8125rem] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live ({liveSessions.length})
                 </p>
                 {liveSessions.map((s) => (
-                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-700 hover:bg-gray-100 transition-colors">
+                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
                     {s.title}
-                    <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                    <span className="block text-xs text-slate-500 font-mono mt-0.5">{s.code}</span>
                   </a>
                 ))}
               </div>
@@ -168,11 +175,11 @@ export default function AnalyticsPage() {
 
             {upcomingSessions.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Upcoming</p>
+                <p className="text-[0.8125rem] font-bold text-theme-primary uppercase tracking-wider">Upcoming</p>
                 {upcomingSessions.map((s) => (
-                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-700 hover:bg-gray-100 transition-colors">
+                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
                     {s.title}
-                    <span className="block text-xs text-gray-400">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="block text-xs text-slate-500 mt-0.5">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                   </a>
                 ))}
               </div>
@@ -180,21 +187,21 @@ export default function AnalyticsPage() {
 
             {pastSessions.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Past</p>
+                <p className="text-[0.8125rem] font-bold text-slate-400 uppercase tracking-wider">Past</p>
                 {pastSessions.map((s) => (
-                  <a key={s.id} href={`/report/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-500 hover:bg-gray-100 transition-colors">
+                  <a key={s.id} href={`/report/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug truncate text-slate-400 hover:bg-theme-sidebar-hover-bg transition-colors">
                     {s.title}
-                    <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                    <span className="block text-xs text-slate-500 font-mono mt-0.5">{s.code}</span>
                   </a>
                 ))}
               </div>
             )}
 
-            <div className="pt-4 border-t border-gray-200 space-y-1">
-              <a href="/create" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 font-medium transition-colors">+ New Session</a>
-              <a href="/analytics" className="block px-3 py-2 rounded-lg text-sm bg-blue-50 text-blue-700 font-medium">Analytics</a>
-              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">Profile (coming soon)</div>
-              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">Settings (coming soon)</div>
+            <div className="pt-4 border-t border-theme-sidebar-divider space-y-1">
+              <a href="/create" className="block px-3 py-2.5 rounded-lg text-[0.9375rem] text-theme-sidebar-active-text hover:bg-theme-sidebar-hover-bg font-semibold transition-colors">+ New Session</a>
+              <a href="/analytics" className="block px-3 py-2.5 rounded-lg text-[0.9375rem] bg-theme-sidebar-active-bg text-theme-sidebar-active-text font-semibold">Analytics</a>
+              <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Profile (coming soon)</div>
+              <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Settings (coming soon)</div>
             </div>
           </div>
         </aside>
@@ -205,36 +212,36 @@ export default function AnalyticsPage() {
         {/* Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
-            { label: 'Total Sessions', value: totalSessions, color: 'text-gray-900' },
-            { label: 'Total Questions', value: totalQuestions, color: 'text-gray-900' },
-            { label: 'Total Upvotes', value: totalUpvotes, color: 'text-blue-600' },
+            { label: 'Total Sessions', value: totalSessions, color: 'text-slate-900' },
+            { label: 'Total Questions', value: totalQuestions, color: 'text-slate-900' },
+            { label: 'Total Upvotes', value: totalUpvotes, color: 'text-theme-primary' },
             { label: 'Answer Rate', value: `${answerRate}%`, color: answerRate >= 75 ? 'text-green-600' : answerRate >= 50 ? 'text-amber-600' : 'text-red-500' },
-            { label: 'Avg Engagement', value: avgEngagement, color: 'text-purple-600' },
+            { label: 'Avg Engagement', value: avgEngagement, color: 'text-theme-primary' },
           ].map((card) => (
-            <div key={card.label} className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+            <div key={card.label} className="bg-white rounded-2xl border border-slate-200 p-5 text-center">
               <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-              <p className="text-xs text-gray-500 mt-1">{card.label}</p>
+              <p className="text-xs text-slate-500 mt-1">{card.label}</p>
             </div>
           ))}
         </div>
 
         {/* Engagement Over Time */}
         {chartSessions.length > 1 && (
-          <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Questions Per Session</h2>
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Questions Per Session</h2>
             <div className="space-y-2">
               {chartSessions.map((s) => (
                 <div key={s.id} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-28 truncate shrink-0">{s.title}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                  <span className="text-xs text-slate-500 w-28 truncate shrink-0">{s.title}</span>
+                  <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
                     <div
                       className={`h-5 rounded-full transition-all ${
-                        s.answerRate >= 75 ? 'bg-green-500' : s.answerRate >= 50 ? 'bg-amber-500' : 'bg-blue-500'
+                        s.answerRate >= 75 ? 'bg-green-500' : s.answerRate >= 50 ? 'bg-amber-500' : 'bg-theme-primary'
                       }`}
                       style={{ width: `${Math.max((s.questionCount / maxQuestions) * 100, 2)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-mono text-gray-600 w-8 text-right shrink-0">{s.questionCount}</span>
+                  <span className="text-xs font-mono text-slate-600 w-8 text-right shrink-0">{s.questionCount}</span>
                 </div>
               ))}
             </div>
@@ -244,15 +251,15 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Topic Word Cloud */}
           {topTopics.length > 0 && (
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Popular Topics</h2>
+            <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Popular Topics</h2>
               <div className="flex flex-wrap gap-2 justify-center py-4">
                 {topTopics.map(([topic, count]) => {
                   const scale = 0.7 + (count / maxCount) * 1.3
                   return (
                     <span
                       key={topic}
-                      className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium transition-transform hover:scale-110"
+                      className="inline-block px-3 py-1 rounded-full bg-theme-primary-subtle text-theme-primary-hover font-medium transition-transform hover:scale-110"
                       style={{ fontSize: `${Math.round(scale * 14)}px` }}
                     >
                       {topic}
@@ -264,36 +271,36 @@ export default function AnalyticsPage() {
           )}
 
           {/* AI Insights */}
-          <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Insights</h2>
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Insights</h2>
             {aiInsight ? (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
-                <p className="text-sm text-purple-900 leading-relaxed">{aiInsight}</p>
+              <div className="bg-theme-primary-subtle border border-theme-primary-light rounded-xl px-4 py-3">
+                <p className="text-sm text-orange-900 leading-relaxed">{aiInsight}</p>
               </div>
             ) : (
               <div className="text-center py-6">
                 <button
                   onClick={generateAiInsight}
                   disabled={aiLoading}
-                  className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                  className="px-6 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
                 >
                   {aiLoading ? 'Analyzing...' : 'Generate Insights'}
                 </button>
-                <p className="text-xs text-gray-400 mt-2">Analyzes trends across all your sessions</p>
+                <p className="text-xs text-slate-400 mt-2">Analyzes trends across all your sessions</p>
               </div>
             )}
           </section>
         </div>
 
         {/* Session Comparison Table */}
-        <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">All Sessions</h2>
+        <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">All Sessions</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+                <tr className="bg-slate-50 text-left text-xs text-slate-500 uppercase tracking-wide">
                   <th className="px-6 py-3 font-medium">Session</th>
                   <th className="px-4 py-3 font-medium text-center">Questions</th>
                   <th className="px-4 py-3 font-medium text-center">Upvotes</th>
@@ -304,29 +311,29 @@ export default function AnalyticsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sessionRows.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-3">
-                      <a href={`/session/${s.code}`} className="text-gray-900 font-medium hover:text-blue-600 transition-colors">
+                      <a href={`/session/${s.code}`} className="text-slate-900 font-medium hover:text-theme-primary transition-colors">
                         {s.title}
                       </a>
-                      <p className="text-xs text-gray-400 font-mono">{s.code}</p>
+                      <p className="text-xs text-slate-400 font-mono">{s.code}</p>
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-700">{s.questionCount}</td>
-                    <td className="px-4 py-3 text-center text-gray-700">{s.upvotes}</td>
+                    <td className="px-4 py-3 text-center text-slate-700">{s.questionCount}</td>
+                    <td className="px-4 py-3 text-center text-slate-700">{s.upvotes}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         s.answerRate >= 75 ? 'bg-green-100 text-green-700'
                           : s.answerRate >= 50 ? 'bg-amber-100 text-amber-700'
-                            : s.questionCount === 0 ? 'bg-gray-100 text-gray-500'
+                            : s.questionCount === 0 ? 'bg-slate-100 text-slate-500'
                               : 'bg-red-100 text-red-600'
                       }`}>
                         {s.answerRate}%
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center font-mono text-xs text-purple-600">{s.engagementScore}</td>
+                    <td className="px-4 py-3 text-center font-mono text-xs text-theme-primary">{s.engagementScore}</td>
                     <td className="px-4 py-3 text-center">
                       {s.ended_at ? (
-                        <span className="text-xs text-gray-400">Ended</span>
+                        <span className="text-xs text-slate-400">Ended</span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs text-green-600">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -338,8 +345,8 @@ export default function AnalyticsPage() {
                 ))}
                 {sessionRows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                      No sessions yet. <a href="/create" className="text-blue-600 hover:underline">Create one</a>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      No sessions yet. <a href="/create" className="text-theme-primary hover:underline">Create one</a>
                     </td>
                   </tr>
                 )}
@@ -350,7 +357,7 @@ export default function AnalyticsPage() {
 
         {/* Unanswered Questions Report */}
         {sessionsWithUnanswered.length > 0 && (
-          <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
             <h2 className="text-sm font-semibold text-red-500 uppercase tracking-wide">Needs Attention</h2>
             <div className="space-y-3">
               {sessionsWithUnanswered.map((s) => {
@@ -359,9 +366,9 @@ export default function AnalyticsPage() {
                   .sort((a, b) => b.upvotes - a.upvotes)
                   .slice(0, 3)
                 return (
-                  <div key={s.id} className="border border-gray-100 rounded-xl p-4 space-y-2">
+                  <div key={s.id} className="border border-slate-100 rounded-xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <a href={`/session/${s.code}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">{s.title}</a>
+                      <a href={`/session/${s.code}`} className="text-sm font-medium text-slate-900 hover:text-theme-primary">{s.title}</a>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                         s.answerRate < 25 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
                       }`}>
@@ -369,12 +376,12 @@ export default function AnalyticsPage() {
                       </span>
                     </div>
                     {unanswered.map((q) => (
-                      <div key={q.id} className="flex items-center gap-2 text-xs text-gray-600">
-                        <span className="font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">▲{q.upvotes}</span>
+                      <div key={q.id} className="flex items-center gap-2 text-xs text-slate-600">
+                        <span className="font-mono text-theme-primary bg-theme-primary-subtle px-1.5 py-0.5 rounded">▲{q.upvotes}</span>
                         <span className="truncate">{q.text}</span>
                       </div>
                     ))}
-                    <a href={`/report/${s.code}`} className="text-xs text-blue-600 hover:underline">View full report</a>
+                    <a href={`/report/${s.code}`} className="text-xs text-theme-primary hover:underline">View full report</a>
                   </div>
                 )
               })}

@@ -2,9 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ===== QUERY THEME SYSTEM =====
+ * To switch themes, change the color values below.
+ * All components use these variables via Tailwind's `theme-*` classes.
+ *
+ * Current theme: Orange
+ * Theme switching guide: see docs/theme-guide.md
+ * Alternative palettes: see docs/color-palette-purple.md
+ */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* === PRIMARY COLORS === */
+  --theme-primary: #F97316;         /* orange-500: buttons, links, focus */
+  --theme-primary-hover: #EA580C;   /* orange-600: button hover */
+  --theme-primary-light: #FFEDD5;   /* orange-100: badges, highlights */
+  --theme-primary-subtle: #FFF7ED;  /* orange-50: selected states */
+  --theme-primary-muted: #FB923C;   /* orange-400: muted accent text */
+
+  /* === VIBRANT MESH (landing page, header) === */
+  --theme-mesh-base: #9a3412;       /* orange-800: warm, not too dark */
+  --theme-mesh-1: rgba(251, 146, 60, 0.70);  /* orange-400, bright */
+  --theme-mesh-2: rgba(253, 224, 71, 0.50);  /* yellow-300, bright */
+  --theme-mesh-3: rgba(251, 191, 36, 0.50);  /* amber-400, warm */
+  --theme-mesh-4: rgba(253, 186, 116, 0.60); /* orange-300, light */
+  --theme-mesh-5: rgba(249, 115, 22, 0.50);  /* orange-500, core */
+  --theme-mesh-6: rgba(251, 146, 60, 0.40);  /* orange-400, fill */
+  --theme-mesh-7: rgba(254, 243, 199, 0.35); /* amber-100, soft glow */
+  --theme-mesh-center: rgba(253, 230, 138, 0.50); /* yellow-200, center brightness */
+
+  /* === TEXT ON MESH === */
+  --theme-dark-subheading: rgba(255, 255, 255, 0.90);   /* white, high contrast */
+  --theme-dark-muted: rgba(255, 237, 213, 0.80);        /* orange-100, readable */
+  --theme-dark-accent: rgba(255, 255, 255, 0.75);       /* white, for icons */
+  --theme-dark-divider: rgba(255, 255, 255, 0.20);      /* white line */
+
+  /* === HEADER (elements on mesh background) === */
+  --theme-header-text: #ffffff;
+  --theme-header-text-muted: rgba(255, 255, 255, 0.80);
+  --theme-header-badge-bg: rgba(255, 255, 255, 0.20);
+  --theme-header-badge-text: #ffffff;
+  --theme-header-btn-border: rgba(255, 255, 255, 0.25);
+  --theme-header-btn-text: rgba(255, 255, 255, 0.90);
+  --theme-header-btn-hover-bg: rgba(255, 255, 255, 0.15);
+
+  /* === SIDEBAR (clean white) === */
+  --theme-sidebar-bg: #ffffff;         /* pure white */
+  --theme-sidebar-border: #F1F5F9;     /* slate-100: subtle border */
+  --theme-sidebar-text: #334155;       /* slate-700: readable */
+  --theme-sidebar-text-hover: #0F172A; /* slate-900 */
+  --theme-sidebar-hover-bg: #F8FAFC;   /* slate-50: barely visible hover */
+  --theme-sidebar-active-bg: #FFF7ED;  /* orange-50: warm active bg */
+  --theme-sidebar-active-text: #EA580C; /* orange-600 */
+  --theme-sidebar-section-label: #F97316; /* orange-500 */
+  --theme-sidebar-divider: #F1F5F9;    /* slate-100: clean divider */
 }
 
 body {

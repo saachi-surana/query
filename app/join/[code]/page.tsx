@@ -42,17 +42,17 @@ function ReplyThread({
     <>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+        className="text-xs text-blue-500 hover:text-violet-700 transition-colors"
       >
         {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : 'Reply'}
       </button>
       {open && (
-        <div className="ml-4 pl-3 border-l-2 border-gray-200 space-y-2 mt-2">
+        <div className="ml-4 pl-3 border-l-2 border-slate-200 space-y-2 mt-2">
           {replies.map((r) => (
             <div key={r.id} className="space-y-0.5">
-              <p className="text-sm text-gray-700">{r.text}</p>
-              <p className="text-xs text-gray-400">
-                <span className={r.is_host ? 'font-semibold text-blue-600' : ''}>
+              <p className="text-sm text-slate-700">{r.text}</p>
+              <p className="text-xs text-slate-400">
+                <span className={r.is_host ? 'font-semibold text-violet-600' : ''}>
                   {r.is_host ? '★ Host' : r.author_name || 'Anonymous'}
                 </span>
                 <span className="mx-1">·</span>
@@ -67,12 +67,12 @@ function ReplyThread({
               onChange={(e) => setText(e.target.value)}
               placeholder="Write a follow-up..."
               maxLength={500}
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
             <button
               type="submit"
               disabled={submitting || !text.trim()}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors"
             >
               Send
             </button>
@@ -297,8 +297,8 @@ export default function JoinPage() {
   if (notFound) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">Session Not Found</h1>
-        <p className="text-gray-500">The code &ldquo;{code}&rdquo; doesn&apos;t match any active session.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Session Not Found</h1>
+        <p className="text-slate-500">The code &ldquo;{code}&rdquo; doesn&apos;t match any active session.</p>
         <button
           onClick={() => router.push('/')}
           className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
@@ -312,13 +312,13 @@ export default function JoinPage() {
   if (!session) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading…</div>
+        <div className="animate-pulse text-slate-400">Loading…</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-slate-50">
       {/* Connection banner */}
       {!connected && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800 text-center">
@@ -327,15 +327,15 @@ export default function JoinPage() {
       )}
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
+      <header className="bg-white border-b border-slate-200 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity shrink-0">
+          <a href="/" className="text-xl font-bold text-slate-900 hover:opacity-80 transition-opacity shrink-0">
             Query
           </a>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-semibold text-gray-800 truncate">{session.title}</h1>
+            <h1 className="text-lg font-semibold text-slate-800 truncate">{session.title}</h1>
             {session.description && (
-              <p className="text-xs text-gray-500 truncate">{session.description}</p>
+              <p className="text-xs text-slate-500 truncate">{session.description}</p>
             )}
           </div>
         </div>
@@ -343,7 +343,7 @@ export default function JoinPage() {
 
       {/* Session ended banner */}
       {session.ended_at && (
-        <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 text-sm text-gray-600 text-center">
+        <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-sm text-slate-600 text-center">
           This session has ended. Browse questions and answers below.
         </div>
       )}
@@ -361,7 +361,7 @@ export default function JoinPage() {
       })()}
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex">
             {(['ask', 'all', 'topics', 'mine'] as const).map((t) => (
@@ -370,8 +370,8 @@ export default function JoinPage() {
                 onClick={() => setTab(t)}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   tab === t
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-violet-600 text-violet-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {t === 'ask' ? 'Ask' : t === 'all' ? 'All' : t === 'topics' ? 'Topics' : `Mine (${myQuestionIds.size})`}
@@ -384,7 +384,7 @@ export default function JoinPage() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* ASK TAB */}
         {tab === 'ask' && session.ended_at && (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-slate-400">
             <p className="text-lg font-medium">This session has ended.</p>
             <p className="text-sm mt-1">You can still browse questions, topics, and answers.</p>
           </div>
@@ -418,14 +418,14 @@ export default function JoinPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Name */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <label className="block text-sm font-medium text-slate-700">Name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={anonymous}
                     placeholder="Your name (optional)"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
                   />
                 </div>
 
@@ -435,14 +435,14 @@ export default function JoinPage() {
                     type="checkbox"
                     checked={anonymous}
                     onChange={(e) => setAnonymous(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                   />
-                  <span className="text-sm text-gray-600">Ask anonymously</span>
+                  <span className="text-sm text-slate-600">Ask anonymously</span>
                 </label>
 
                 {/* Question textarea */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Question</label>
+                  <label className="block text-sm font-medium text-slate-700">Question</label>
                   <textarea
                     value={questionText}
                     onChange={(e) => {
@@ -453,9 +453,9 @@ export default function JoinPage() {
                     placeholder="Type your question here..."
                     rows={4}
                     required
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
                   />
-                  <p className={`text-xs text-right ${questionText.length >= MAX_CHARS ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                  <p className={`text-xs text-right ${questionText.length >= MAX_CHARS ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
                     {questionText.length}/{MAX_CHARS}
                   </p>
                 </div>
@@ -469,7 +469,7 @@ export default function JoinPage() {
                     <div className="space-y-2">
                       {similarQuestions.map((sq) => (
                         <div key={sq.id} className="flex items-start gap-3 bg-white rounded-lg border border-yellow-100 p-3">
-                          <p className="flex-1 text-sm text-gray-700">{sq.text}</p>
+                          <p className="flex-1 text-sm text-slate-700">{sq.text}</p>
                           <button
                             type="button"
                             onClick={() => handleUpvote(sq.id, true)}
@@ -494,7 +494,7 @@ export default function JoinPage() {
                 <button
                   type="submit"
                   disabled={submitting || !questionText.trim()}
-                  className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-violet-600 text-white rounded-lg font-medium text-sm hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {submitting && (
                     <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -513,7 +513,7 @@ export default function JoinPage() {
         {tab === 'all' && (
           <div className="space-y-3">
             {questions.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
+              <div className="text-center py-16 text-slate-400">
                 <p className="text-lg font-medium">No questions yet.</p>
                 <p className="text-sm mt-1">Be the first to ask!</p>
               </div>
@@ -521,33 +521,33 @@ export default function JoinPage() {
               [...questions].filter((q) => q.approved).sort((a, b) => b.upvotes - a.upvotes).map((q) => {
                 const qReplies = replies.filter((r) => r.question_id === q.id)
                 return (
-                  <div key={q.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
+                  <div key={q.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-3">
                     <button
                       onClick={() => handleUpvote(q.id)}
                       className={`shrink-0 flex flex-col items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         upvotedIds.has(q.id)
-                          ? 'bg-blue-100 text-blue-600 hover:bg-blue-50'
-                          : 'bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-500'
+                          ? 'bg-blue-100 text-violet-600 hover:bg-violet-50'
+                          : 'bg-slate-100 hover:bg-violet-50 hover:text-violet-600 text-slate-500'
                       }`}
                     >
                       <span>▲</span>
                       <span>{q.upvotes}</span>
                     </button>
                     <div className="flex-1 min-w-0 space-y-2">
-                      <p className="text-sm text-gray-900">{q.text}</p>
+                      <p className="text-sm text-slate-900">{q.text}</p>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-slate-400">
                             {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
                           </span>
-                          <span className="text-xs text-gray-300">·</span>
+                          <span className="text-xs text-slate-300">·</span>
                           <ReplyThread replies={qReplies} onReply={(text) => handleReply(q.id, text)} />
                         </div>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             q.status === 'answered'
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
+                              : 'bg-slate-100 text-slate-500'
                           }`}
                         >
                           {q.status === 'answered' ? 'Answered' : 'Pending'}
@@ -576,7 +576,7 @@ export default function JoinPage() {
           return (
             <div className="space-y-4">
               {topicClusters.length === 0 && answeredTopics.length === 0 ? (
-                <div className="text-center py-16 text-gray-400">
+                <div className="text-center py-16 text-slate-400">
                   <p className="text-lg font-medium">No topics yet.</p>
                   <p className="text-sm mt-1">Questions will be grouped into topics as they come in.</p>
                 </div>
@@ -585,21 +585,21 @@ export default function JoinPage() {
                   {topicClusters.map((c) => {
                     const isHighlighted = session.highlighted_cluster_id === c.id
                     return (
-                      <div key={c.id} className={`bg-white rounded-xl border p-4 space-y-2 ${isHighlighted ? 'border-purple-300 ring-2 ring-purple-100' : 'border-gray-200'}`}>
+                      <div key={c.id} className={`bg-white rounded-xl border p-4 space-y-2 ${isHighlighted ? 'border-purple-300 ring-2 ring-purple-100' : 'border-slate-200'}`}>
                         <div className="flex items-center gap-2">
                           {isHighlighted && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
                               Discussing Now
                             </span>
                           )}
-                          <h3 className="text-sm font-semibold text-gray-900">{c.title}</h3>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          <h3 className="text-sm font-semibold text-slate-900">{c.title}</h3>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
                             {c.questions.length}
                           </span>
-                          <span className="text-xs text-gray-400 ml-auto">▲ {c.questions.reduce((s, q) => s + q.upvotes, 0)}</span>
+                          <span className="text-xs text-slate-400 ml-auto">▲ {c.questions.reduce((s, q) => s + q.upvotes, 0)}</span>
                         </div>
                         <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">AI Summary</p>
+                          <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">AI Summary</p>
                           <p className="text-sm text-blue-900 mt-0.5">{c.summary_question}</p>
                         </div>
                       </div>
@@ -607,15 +607,15 @@ export default function JoinPage() {
                   })}
                   {answeredTopics.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Answered Topics</p>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Answered Topics</p>
                       {answeredTopics.map((c) => (
-                        <div key={c.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-1">
+                        <div key={c.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-green-500 text-sm">✓</span>
-                            <h3 className="text-sm font-semibold text-gray-500">{c.title}</h3>
-                            <span className="text-xs text-gray-400">{c.questions.length} question{c.questions.length !== 1 ? 's' : ''}</span>
+                            <h3 className="text-sm font-semibold text-slate-500">{c.title}</h3>
+                            <span className="text-xs text-slate-400">{c.questions.length} question{c.questions.length !== 1 ? 's' : ''}</span>
                           </div>
-                          <p className="text-xs text-gray-400">{c.summary_question}</p>
+                          <p className="text-xs text-slate-400">{c.summary_question}</p>
                         </div>
                       ))}
                     </div>
@@ -630,10 +630,10 @@ export default function JoinPage() {
         {tab === 'mine' && (
           <div className="space-y-3">
             {myQuestionIds.size === 0 ? (
-              <div className="text-center py-16 text-gray-400">
+              <div className="text-center py-16 text-slate-400">
                 <p className="text-lg font-medium">You haven&apos;t asked anything yet.</p>
                 <p className="text-sm mt-1">
-                  <button onClick={() => setTab('ask')} className="text-blue-600 hover:underline">
+                  <button onClick={() => setTab('ask')} className="text-violet-600 hover:underline">
                     Ask a question
                   </button>
                 </p>
@@ -649,23 +649,23 @@ export default function JoinPage() {
                     ? 'bg-amber-100 text-amber-700'
                     : q.status === 'answered'
                       ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
+                      : 'bg-slate-100 text-slate-500'
                   return (
-                    <div key={q.id} className={`bg-white rounded-xl border p-4 flex items-start gap-3 ${!q.approved ? 'border-amber-200' : 'border-gray-200'}`}>
-                      <div className="shrink-0 flex flex-col items-center px-2 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500">
+                    <div key={q.id} className={`bg-white rounded-xl border p-4 flex items-start gap-3 ${!q.approved ? 'border-amber-200' : 'border-slate-200'}`}>
+                      <div className="shrink-0 flex flex-col items-center px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-500">
                         <span>▲</span>
                         <span>{q.upvotes}</span>
                       </div>
                       <div className="flex-1 min-w-0 space-y-2">
-                        <p className="text-sm text-gray-900">{q.text}</p>
+                        <p className="text-sm text-slate-900">{q.text}</p>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-slate-400">
                               {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
                             </span>
                             {q.approved && (
                               <>
-                                <span className="text-xs text-gray-300">·</span>
+                                <span className="text-xs text-slate-300">·</span>
                                 <ReplyThread replies={qReplies} onReply={(text) => handleReply(q.id, text)} />
                               </>
                             )}
