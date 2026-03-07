@@ -8,6 +8,9 @@ create table if not exists sessions (
   title text not null,
   description text,
   moderation_enabled boolean not null default false,
+  highlighted_cluster_id uuid,
+  ended_at timestamp with time zone,
+  starts_at timestamp with time zone,
   created_at timestamp with time zone default now()
 );
 

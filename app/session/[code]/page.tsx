@@ -149,6 +149,8 @@ function ClusterCard({
   onMarkQuestionAnswered,
   onMarkQuestionUnanswered,
   onReply,
+  onHighlight,
+  highlighted,
   muted,
 }: {
   cluster: ClusterWithQuestions
@@ -158,6 +160,8 @@ function ClusterCard({
   onMarkQuestionAnswered: (id: string) => void
   onMarkQuestionUnanswered: (id: string) => void
   onReply: (questionId: string, text: string) => Promise<void>
+  onHighlight?: (id: string | null) => void
+  highlighted?: boolean
   muted: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -176,36 +180,59 @@ function ClusterCard({
   return (
     <div
       className={`rounded-xl border overflow-hidden transition-colors ${
-        muted ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'
+        highlighted ? 'bg-purple-50 border-purple-300 ring-2 ring-purple-200' : muted ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'
       }`}
     >
       {/* Card header */}
-      <button
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {muted && (
-          <span className="text-green-500 text-base shrink-0">✓</span>
-        )}
-        <div className="flex-1 min-w-0 space-y-0.5">
-          <div className="flex items-center gap-2">
-            <h3 className={`font-semibold text-sm ${muted ? 'text-gray-500' : 'text-gray-900'}`}>
-              {cluster.title}
-            </h3>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-              muted ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700'
-            }`}>
-              {cluster.questions.length} question{cluster.questions.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          {!open && (
-            <p className={`text-xs truncate ${muted ? 'text-gray-400' : 'text-gray-500'}`}>
-              {cluster.summary_question}
-            </p>
+      <div className="flex items-center">
+        <button
+          className="flex-1 flex items-center gap-3 px-5 py-4 text-left hover:bg-gray-50/50 transition-colors"
+          onClick={() => setOpen((o) => !o)}
+        >
+          {highlighted && (
+            <span className="text-purple-600 text-base shrink-0">◉</span>
           )}
-        </div>
-        <ChevronIcon open={open} />
-      </button>
+          {muted && !highlighted && (
+            <span className="text-green-500 text-base shrink-0">✓</span>
+          )}
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <h3 className={`font-semibold text-sm ${highlighted ? 'text-purple-900' : muted ? 'text-gray-500' : 'text-gray-900'}`}>
+                {cluster.title}
+              </h3>
+              {highlighted && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                  Discussing Now
+                </span>
+              )}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                muted ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {cluster.questions.length} question{cluster.questions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {!open && (
+              <p className={`text-xs truncate ${muted ? 'text-gray-400' : 'text-gray-500'}`}>
+                {cluster.summary_question}
+              </p>
+            )}
+          </div>
+          <ChevronIcon open={open} />
+        </button>
+        {onHighlight && !muted && (
+          <button
+            onClick={() => onHighlight(highlighted ? null : cluster.id)}
+            title={highlighted ? 'Stop discussing' : 'Mark as discussing now'}
+            className={`shrink-0 mr-3 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              highlighted
+                ? 'bg-purple-200 text-purple-800 hover:bg-purple-300'
+                : 'bg-gray-100 text-gray-500 hover:bg-purple-100 hover:text-purple-700'
+            }`}
+          >
+            {highlighted ? 'Stop' : 'Discuss'}
+          </button>
+        )}
+      </div>
 
       {/* Expanded content */}
       {open && (
@@ -267,6 +294,7 @@ export default function ModeratorPage() {
   const [clustersOpen, setClustersOpen] = useState(true)
   const [unclusteredOpen, setUnclusteredOpen] = useState(true)
   const [answeredOpen, setAnsweredOpen] = useState(false)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
 
@@ -391,6 +419,25 @@ export default function ModeratorPage() {
   async function markClusterUnanswered(clusterId: string) {
     await supabase.from('questions').update({ status: 'pending' }).eq('cluster_id', clusterId)
     await supabase.from('clusters').update({ status: 'unanswered' }).eq('id', clusterId)
+  }
+
+  async function highlightCluster(clusterId: string | null) {
+    if (!session) return
+    await supabase.from('sessions').update({ highlighted_cluster_id: clusterId }).eq('id', session.id)
+    setSession({ ...session, highlighted_cluster_id: clusterId })
+  }
+
+  async function endSession() {
+    if (!session) return
+    const now = new Date().toISOString()
+    await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id)
+    setSession({ ...session, ended_at: now })
+  }
+
+  async function reopenSession() {
+    if (!session) return
+    await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id)
+    setSession({ ...session, ended_at: null })
   }
 
   async function handleHostReply(questionId: string, text: string) {
@@ -522,6 +569,13 @@ export default function ModeratorPage() {
         </div>
       )}
 
+      {/* Session ended banner */}
+      {session.ended_at && (
+        <div className="bg-gray-100 border-b border-gray-300 px-4 py-2 text-sm text-gray-700 text-center">
+          This session has ended. You can still reply to questions and export data.
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4">
@@ -554,6 +608,21 @@ export default function ModeratorPage() {
             >
               {session.moderation_enabled ? 'Moderation: On' : 'Moderation: Off'}
             </button>
+            {session.ended_at ? (
+              <button
+                onClick={reopenSession}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors"
+              >
+                Reopen Session
+              </button>
+            ) : (
+              <button
+                onClick={endSession}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+              >
+                End Session
+              </button>
+            )}
             <button
               onClick={exportCSV}
               disabled={questions.length === 0}
@@ -694,6 +763,8 @@ export default function ModeratorPage() {
                 onMarkQuestionAnswered={markQuestionAnswered}
                 onMarkQuestionUnanswered={markQuestionUnanswered}
                 onReply={handleHostReply}
+                onHighlight={highlightCluster}
+                highlighted={session.highlighted_cluster_id === c.id}
                 muted={false}
               />
             ))}
@@ -806,6 +877,74 @@ export default function ModeratorPage() {
                       muted={true}
                     />
                   ) : null
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Analytics */}
+        {totalQuestions > 0 && (
+          <section className="space-y-3">
+            <button
+              onClick={() => setAnalyticsOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide group-hover:text-gray-700 transition-colors">
+                Analytics
+              </h2>
+              <ChevronIcon open={analyticsOpen} />
+            </button>
+            {analyticsOpen && (
+              <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="text-center space-y-1">
+                    <p className="text-2xl font-bold text-gray-900">{totalQuestions}</p>
+                    <p className="text-xs text-gray-500">Total Questions</p>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-2xl font-bold text-gray-900">{approvedQuestions.reduce((s, q) => s + q.upvotes, 0)}</p>
+                    <p className="text-xs text-gray-500">Total Upvotes</p>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-2xl font-bold text-green-600">
+                      {totalQuestions > 0 ? Math.round((approvedQuestions.filter((q) => q.status === 'answered').length / totalQuestions) * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-gray-500">Answered</p>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-2xl font-bold text-gray-900">{unansweredClusters.length}</p>
+                    <p className="text-xs text-gray-500">Active Topics</p>
+                  </div>
+                </div>
+
+                {/* Answer progress bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>{approvedQuestions.filter((q) => q.status === 'answered').length} answered</span>
+                    <span>{approvedQuestions.filter((q) => q.status !== 'answered').length} remaining</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full transition-all"
+                      style={{ width: `${totalQuestions > 0 ? (approvedQuestions.filter((q) => q.status === 'answered').length / totalQuestions) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Top questions */}
+                {approvedQuestions.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Most Upvoted</p>
+                    {[...approvedQuestions].sort((a, b) => b.upvotes - a.upvotes).slice(0, 3).map((q) => (
+                      <div key={q.id} className="flex items-center gap-3 text-sm">
+                        <span className="shrink-0 font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                          ▲ {q.upvotes}
+                        </span>
+                        <p className="text-gray-700 truncate">{q.text}</p>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

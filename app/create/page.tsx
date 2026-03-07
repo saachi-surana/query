@@ -17,6 +17,7 @@ export default function CreatePage() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [startsAt, setStartsAt] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -36,6 +37,7 @@ export default function CreatePage() {
           code,
           title: title.trim(),
           description: description.trim() || null,
+          starts_at: startsAt || null,
         })
         .select('code')
         .single()
@@ -107,6 +109,23 @@ export default function CreatePage() {
             />
             <p className="text-xs text-gray-400">
               Used by AI to better group questions into topics.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="starts_at" className="block text-sm font-medium text-gray-700">
+              Start Time{' '}
+              <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              id="starts_at"
+              type="datetime-local"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400">
+              Set a future start time to collect questions before the session begins.
             </p>
           </div>
 

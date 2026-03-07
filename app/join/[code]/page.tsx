@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Reply } from '@/lib/supabase'
+import { supabase, Session, Question, Reply, Cluster } from '@/lib/supabase'
+
+type ClusterWithQuestions = Cluster & { questions: Question[] }
 
 const MAX_CHARS = 500
 const DEBOUNCE_MS = 400
@@ -88,8 +90,9 @@ export default function JoinPage() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [notFound, setNotFound] = useState(false)
-  const [tab, setTab] = useState<'ask' | 'all' | 'mine'>('ask')
+  const [tab, setTab] = useState<'ask' | 'all' | 'topics' | 'mine'>('ask')
   const [questions, setQuestions] = useState<Question[]>([])
+  const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
 
@@ -131,11 +134,13 @@ export default function JoinPage() {
     if (!session) return
 
     async function loadData() {
-      const [{ data: qs }, { data: rs }] = await Promise.all([
+      const [{ data: qs }, { data: cs }, { data: rs }] = await Promise.all([
         supabase.from('questions').select('*').eq('session_id', session!.id).order('created_at', { ascending: false }),
+        supabase.from('clusters').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
         supabase.from('replies').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
       ])
       setQuestions(qs || [])
+      setClusters(cs || [])
       setReplies(rs || [])
     }
     loadData()
@@ -161,6 +166,19 @@ export default function JoinPage() {
             )
           } else if (payload.eventType === 'DELETE') {
             setQuestions((prev) => prev.filter((q) => q.id !== payload.old.id))
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clusters', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setClusters((prev) => [...prev, payload.new as Cluster])
+          } else if (payload.eventType === 'UPDATE') {
+            setClusters((prev) =>
+              prev.map((c) => (c.id === (payload.new as Cluster).id ? (payload.new as Cluster) : c))
+            )
           }
         }
       )
@@ -323,11 +341,30 @@ export default function JoinPage() {
         </div>
       </header>
 
+      {/* Session ended banner */}
+      {session.ended_at && (
+        <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 text-sm text-gray-600 text-center">
+          This session has ended. Browse questions and answers below.
+        </div>
+      )}
+
+      {/* Highlighted cluster banner */}
+      {session.highlighted_cluster_id && !session.ended_at && (() => {
+        const highlighted = clusters.find((c) => c.id === session.highlighted_cluster_id)
+        if (!highlighted) return null
+        return (
+          <div className="bg-purple-50 border-b border-purple-200 px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Currently Discussing</p>
+            <p className="text-sm font-medium text-purple-900 mt-0.5">{highlighted.summary_question}</p>
+          </div>
+        )
+      })()}
+
       {/* Tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex">
-            {(['ask', 'all', 'mine'] as const).map((t) => (
+            {(['ask', 'all', 'topics', 'mine'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -337,7 +374,7 @@ export default function JoinPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {t === 'ask' ? 'Ask a Question' : t === 'all' ? 'All Questions' : `My Questions (${myQuestionIds.size})`}
+                {t === 'ask' ? 'Ask' : t === 'all' ? 'All' : t === 'topics' ? 'Topics' : `Mine (${myQuestionIds.size})`}
               </button>
             ))}
           </div>
@@ -346,7 +383,13 @@ export default function JoinPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* ASK TAB */}
-        {tab === 'ask' && (
+        {tab === 'ask' && session.ended_at && (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-lg font-medium">This session has ended.</p>
+            <p className="text-sm mt-1">You can still browse questions, topics, and answers.</p>
+          </div>
+        )}
+        {tab === 'ask' && !session.ended_at && (
           <div className="space-y-4">
             {submitSuccess || upvoted ? (
               <div className={`rounded-xl border p-6 text-center space-y-3 ${
@@ -517,6 +560,71 @@ export default function JoinPage() {
             )}
           </div>
         )}
+
+        {/* TOPICS TAB */}
+        {tab === 'topics' && (() => {
+          const approvedQs = questions.filter((q) => q.approved)
+          const topicClusters: ClusterWithQuestions[] = clusters
+            .filter((c) => c.status === 'unanswered')
+            .map((c) => ({ ...c, questions: approvedQs.filter((q) => q.cluster_id === c.id) }))
+            .filter((c) => c.questions.length > 0)
+            .sort((a, b) => b.questions.reduce((s, q) => s + q.upvotes, 0) - a.questions.reduce((s, q) => s + q.upvotes, 0))
+          const answeredTopics: ClusterWithQuestions[] = clusters
+            .filter((c) => c.status === 'answered')
+            .map((c) => ({ ...c, questions: approvedQs.filter((q) => q.cluster_id === c.id) }))
+            .filter((c) => c.questions.length > 0)
+          return (
+            <div className="space-y-4">
+              {topicClusters.length === 0 && answeredTopics.length === 0 ? (
+                <div className="text-center py-16 text-gray-400">
+                  <p className="text-lg font-medium">No topics yet.</p>
+                  <p className="text-sm mt-1">Questions will be grouped into topics as they come in.</p>
+                </div>
+              ) : (
+                <>
+                  {topicClusters.map((c) => {
+                    const isHighlighted = session.highlighted_cluster_id === c.id
+                    return (
+                      <div key={c.id} className={`bg-white rounded-xl border p-4 space-y-2 ${isHighlighted ? 'border-purple-300 ring-2 ring-purple-100' : 'border-gray-200'}`}>
+                        <div className="flex items-center gap-2">
+                          {isHighlighted && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                              Discussing Now
+                            </span>
+                          )}
+                          <h3 className="text-sm font-semibold text-gray-900">{c.title}</h3>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            {c.questions.length}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-auto">▲ {c.questions.reduce((s, q) => s + q.upvotes, 0)}</span>
+                        </div>
+                        <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">AI Summary</p>
+                          <p className="text-sm text-blue-900 mt-0.5">{c.summary_question}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {answeredTopics.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Answered Topics</p>
+                      {answeredTopics.map((c) => (
+                        <div key={c.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-500 text-sm">✓</span>
+                            <h3 className="text-sm font-semibold text-gray-500">{c.title}</h3>
+                            <span className="text-xs text-gray-400">{c.questions.length} question{c.questions.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          <p className="text-xs text-gray-400">{c.summary_question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* MY QUESTIONS TAB */}
         {tab === 'mine' && (

@@ -11,6 +11,9 @@ export type Session = {
   title: string
   description: string | null
   moderation_enabled: boolean
+  highlighted_cluster_id: string | null
+  ended_at: string | null
+  starts_at: string | null
   created_at: string
 }
 

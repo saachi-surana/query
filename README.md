@@ -32,6 +32,7 @@ This creates the `sessions`, `questions`, `clusters`, and `replies` tables and e
 > **Upgrading?** If you already have the database set up from an earlier version, run these migrations in order in the SQL Editor:
 > 1. `supabase-add-replies.sql` — adds the `replies` table
 > 2. `supabase-add-moderation.sql` — adds moderation support
+> 3. `supabase-add-sprint2.sql` — adds highlight, end session, pre-session start time
 
 ### 3. Add environment variables
 
@@ -74,9 +75,12 @@ Open [http://localhost:3000](http://localhost:3000).
 5. Upvote/un-upvote other questions; view all questions sorted by popularity
 6. Reply to any question with follow-ups; see host responses in real time
 7. Track your own submissions in the "My Questions" tab
+8. Browse AI-organized topics in the "Topics" tab with cluster summaries
+9. See which topic is currently being discussed (highlighted by host)
+10. After session ends, browse all Q&A and follow-up answers
 
 ### Moderator Flow
-1. Click "Host a Session" → fill in title + optional description → `/session/[code]`
+1. Click "Host a Session" → fill in title + optional description + optional start time → `/session/[code]`
 2. Share the join code or join link with attendees
 3. As questions arrive, they're automatically clustered by AI topic
 4. Each cluster shows a generated summary question
@@ -84,8 +88,11 @@ Open [http://localhost:3000](http://localhost:3000).
 6. Reply to questions directly — responses are tagged as "Host"
 7. View answered questions in a collapsible section with cluster subtabs
 8. Toggle moderation to approve/dismiss questions before they appear
-9. Export all session data as CSV
-10. Open `/present/[code]` for a projectable display view
+9. Highlight a cluster as "Discussing Now" — visible to attendees and on presentation view
+10. Export all session data as CSV
+11. Open `/present/[code]` for a projectable display view
+12. End session when done — disables new questions, keeps Q&A browsable
+13. View session analytics (questions, upvotes, % answered, top questions)
 
 ### Clustering
 Every new question triggers a call to `/api/cluster`, which:
@@ -114,5 +121,6 @@ lib/
 supabase-schema.sql         # Full database schema (fresh setup)
 supabase-add-replies.sql    # Migration: replies table
 supabase-add-moderation.sql # Migration: moderation support
+supabase-add-sprint2.sql    # Migration: highlight, end session, start time
 .env.local.example          # Environment variable template
 ```

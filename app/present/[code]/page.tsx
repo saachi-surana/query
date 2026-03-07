@@ -45,6 +45,9 @@ export default function PresentPage() {
 
     const channel = supabase
       .channel(`present-${session.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${session.id}` },
+        (payload) => { setSession(payload.new as Session) }
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'questions', filter: `session_id=eq.${session.id}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
@@ -154,26 +157,36 @@ export default function PresentPage() {
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {unansweredClusters.map((c, i) => {
               const clusterUpvotes = c.questions.reduce((s, q) => s + q.upvotes, 0)
+              const isHighlighted = session.highlighted_cluster_id === c.id
+              const isTop = i === 0 && !session.highlighted_cluster_id
+              const prominent = isHighlighted || isTop
               return (
                 <div
                   key={c.id}
                   className={`rounded-xl border p-6 transition-all ${
-                    i === 0
-                      ? 'bg-blue-950/50 border-blue-800 scale-100'
-                      : 'bg-gray-900/50 border-gray-800'
+                    isHighlighted
+                      ? 'bg-purple-950/50 border-purple-600 ring-1 ring-purple-500'
+                      : isTop
+                        ? 'bg-blue-950/50 border-blue-800'
+                        : 'bg-gray-900/50 border-gray-800'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-3">
-                        {i === 0 && (
+                        {isHighlighted && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-600 text-white animate-pulse">
+                            DISCUSSING NOW
+                          </span>
+                        )}
+                        {isTop && !isHighlighted && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
                             TOP
                           </span>
                         )}
                         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">{c.title}</h3>
                       </div>
-                      <p className={`font-medium leading-relaxed ${i === 0 ? 'text-xl text-white' : 'text-lg text-gray-300'}`}>
+                      <p className={`font-medium leading-relaxed ${prominent ? 'text-xl text-white' : 'text-lg text-gray-300'}`}>
                         {c.summary_question}
                       </p>
                     </div>
