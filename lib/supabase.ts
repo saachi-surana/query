@@ -26,6 +26,7 @@ export type Question = {
   cluster_id: string | null
   status: 'pending' | 'answered'
   approved: boolean
+  suggested_answer: string | null
   upvotes: number
   created_at: string
 }
@@ -36,6 +37,16 @@ export type Cluster = {
   title: string
   summary_question: string
   status: 'unanswered' | 'answered'
+  claimed_by: string | null
+  created_at: string
+}
+
+export type FaqEntry = {
+  id: string
+  session_id: string
+  cluster_title: string
+  summary_question: string
+  answer: string
   created_at: string
 }
 

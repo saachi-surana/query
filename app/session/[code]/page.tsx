@@ -31,18 +31,21 @@ function Spinner() {
 function QuestionRow({
   question,
   replies,
+  sessionId,
   onMarkAnswered,
   onMarkUnanswered,
   onReply,
 }: {
   question: Question
   replies: Reply[]
+  sessionId?: string
   onMarkAnswered: (id: string) => void
   onMarkUnanswered?: (id: string) => void
   onReply: (questionId: string, text: string) => Promise<void>
 }) {
   const [marking, setMarking] = useState(false)
   const [showReplies, setShowReplies] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -82,7 +85,33 @@ function QuestionRow({
             >
               {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : 'Reply'}
             </button>
+            {sessionId && !question.suggested_answer && question.status !== 'answered' && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={async () => {
+                    setSuggesting(true)
+                    await fetch('/api/suggest-answer', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ questionId: question.id, sessionId }),
+                    }).catch(() => {})
+                    setSuggesting(false)
+                  }}
+                  disabled={suggesting}
+                  className="text-purple-500 hover:text-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {suggesting ? 'Thinking...' : 'AI Suggest'}
+                </button>
+              </>
+            )}
           </div>
+          {question.suggested_answer && (
+            <div className="rounded-md bg-purple-50 border border-purple-200 px-3 py-2 space-y-1">
+              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">AI Suggested Answer</p>
+              <p className="text-sm text-purple-900">{question.suggested_answer}</p>
+            </div>
+          )}
         </div>
         {question.status === 'answered' ? (
           <button
@@ -150,6 +179,9 @@ function ClusterCard({
   onMarkQuestionUnanswered,
   onReply,
   onHighlight,
+  onClaim,
+  onSaveFaq,
+  sessionId,
   highlighted,
   muted,
 }: {
@@ -161,6 +193,9 @@ function ClusterCard({
   onMarkQuestionUnanswered: (id: string) => void
   onReply: (questionId: string, text: string) => Promise<void>
   onHighlight?: (id: string | null) => void
+  onClaim?: (id: string, name: string | null) => void
+  onSaveFaq?: (cluster: ClusterWithQuestions) => void
+  sessionId?: string
   highlighted?: boolean
   muted: boolean
 }) {
@@ -210,6 +245,11 @@ function ClusterCard({
               }`}>
                 {cluster.questions.length} question{cluster.questions.length !== 1 ? 's' : ''}
               </span>
+              {cluster.claimed_by && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                  {cluster.claimed_by}
+                </span>
+              )}
             </div>
             {!open && (
               <p className={`text-xs truncate ${muted ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -251,6 +291,7 @@ function ClusterCard({
                   key={q.id}
                   question={q}
                   replies={replies.filter((r) => r.question_id === q.id)}
+                  sessionId={sessionId}
                   onMarkAnswered={onMarkQuestionAnswered}
                   onMarkUnanswered={onMarkQuestionUnanswered}
                   onReply={onReply}
@@ -272,6 +313,30 @@ function ClusterCard({
             {marking && <Spinner />}
             {muted ? 'Unmark Entire Cluster' : 'Mark Entire Cluster as Answered'}
           </button>
+
+          {/* Claim + FAQ buttons */}
+          <div className="flex gap-2">
+            {onClaim && !muted && (
+              <button
+                onClick={() => onClaim(cluster.id, cluster.claimed_by ? null : prompt('Your name:') || null)}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                  cluster.claimed_by
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                    : 'border-gray-200 text-gray-500 hover:border-indigo-200 hover:text-indigo-600'
+                }`}
+              >
+                {cluster.claimed_by ? `Claimed by ${cluster.claimed_by} — Release` : 'Claim this cluster'}
+              </button>
+            )}
+            {onSaveFaq && muted && (
+              <button
+                onClick={() => onSaveFaq(cluster)}
+                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                Save as FAQ
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -419,6 +484,26 @@ export default function ModeratorPage() {
   async function markClusterUnanswered(clusterId: string) {
     await supabase.from('questions').update({ status: 'pending' }).eq('cluster_id', clusterId)
     await supabase.from('clusters').update({ status: 'unanswered' }).eq('id', clusterId)
+  }
+
+  async function claimCluster(clusterId: string, name: string | null) {
+    await supabase.from('clusters').update({ claimed_by: name }).eq('id', clusterId)
+  }
+
+  async function saveFaqFromCluster(cluster: ClusterWithQuestions) {
+    if (!session) return
+    const hostReplies = replies
+      .filter((r) => r.is_host && cluster.questions.some((q) => q.id === r.question_id))
+      .map((r) => r.text)
+    const answer = hostReplies.length > 0
+      ? hostReplies.join('\n\n')
+      : 'Answered during the live session.'
+    await supabase.from('faq_entries').insert({
+      session_id: session.id,
+      cluster_title: cluster.title,
+      summary_question: cluster.summary_question,
+      answer,
+    })
   }
 
   async function highlightCluster(clusterId: string | null) {
@@ -764,6 +849,8 @@ export default function ModeratorPage() {
                 onMarkQuestionUnanswered={markQuestionUnanswered}
                 onReply={handleHostReply}
                 onHighlight={highlightCluster}
+                onClaim={claimCluster}
+                sessionId={session.id}
                 highlighted={session.highlighted_cluster_id === c.id}
                 muted={false}
               />
@@ -790,7 +877,7 @@ export default function ModeratorPage() {
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                 {unclusteredQuestions.map((q) => (
                   <div key={q.id} className="px-5">
-                    <QuestionRow question={q} replies={replies.filter((r) => r.question_id === q.id)} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
+                    <QuestionRow question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
                   </div>
                 ))}
               </div>
@@ -853,6 +940,7 @@ export default function ModeratorPage() {
                         <QuestionRow
                           question={q}
                           replies={replies.filter((r) => r.question_id === q.id)}
+                          sessionId={session.id}
                           onMarkAnswered={markQuestionAnswered}
                           onMarkUnanswered={markQuestionUnanswered}
                           onReply={handleHostReply}
@@ -874,6 +962,8 @@ export default function ModeratorPage() {
                       onMarkQuestionAnswered={markQuestionAnswered}
                       onMarkQuestionUnanswered={markQuestionUnanswered}
                       onReply={handleHostReply}
+                      onSaveFaq={saveFaqFromCluster}
+                      sessionId={session.id}
                       muted={true}
                     />
                   ) : null

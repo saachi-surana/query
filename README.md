@@ -33,6 +33,7 @@ This creates the `sessions`, `questions`, `clusters`, and `replies` tables and e
 > 1. `supabase-add-replies.sql` — adds the `replies` table
 > 2. `supabase-add-moderation.sql` — adds moderation support
 > 3. `supabase-add-sprint2.sql` — adds highlight, end session, pre-session start time
+> 4. `supabase-add-sprint3.sql` — adds claiming, suggested answers, FAQ library
 
 ### 3. Add environment variables
 
@@ -93,6 +94,10 @@ Open [http://localhost:3000](http://localhost:3000).
 11. Open `/present/[code]` for a projectable display view
 12. End session when done — disables new questions, keeps Q&A browsable
 13. View session analytics (questions, upvotes, % answered, top questions)
+14. Claim clusters to coordinate with co-moderators
+15. Use "AI Suggest" to get draft answers for questions
+16. Save answered clusters as FAQ entries for future reference
+17. View post-session report at `/report/[code]` with unanswered questions + FAQ library
 
 ### Clustering
 Every new question triggers a call to `/api/cluster`, which:
@@ -112,7 +117,9 @@ app/
   join/[code]/page.tsx      # Attendee view
   session/[code]/page.tsx   # Moderator dashboard
   present/[code]/page.tsx   # Presentation display view
+  report/[code]/page.tsx    # Post-session report
   api/cluster/route.ts      # Clustering API endpoint
+  api/suggest-answer/route.ts # AI answer suggestion endpoint
 
 lib/
   supabase.ts               # Supabase client + types
@@ -122,5 +129,6 @@ supabase-schema.sql         # Full database schema (fresh setup)
 supabase-add-replies.sql    # Migration: replies table
 supabase-add-moderation.sql # Migration: moderation support
 supabase-add-sprint2.sql    # Migration: highlight, end session, start time
+supabase-add-sprint3.sql    # Migration: claiming, suggested answers, FAQ library
 .env.local.example          # Environment variable template
 ```
