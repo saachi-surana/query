@@ -813,6 +813,9 @@ export default function ModeratorPage() {
               <a href="/create" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 font-medium transition-colors">
                 + New Session
               </a>
+              <a href="/analytics" className="block px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                Analytics
+              </a>
               <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">
                 Profile (coming soon)
               </div>
@@ -1079,59 +1082,114 @@ export default function ModeratorPage() {
               </h2>
               <ChevronIcon open={analyticsOpen} />
             </button>
-            {analyticsOpen && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="text-center space-y-1">
-                    <p className="text-2xl font-bold text-gray-900">{totalQuestions}</p>
-                    <p className="text-xs text-gray-500">Total Questions</p>
-                  </div>
-                  <div className="text-center space-y-1">
-                    <p className="text-2xl font-bold text-gray-900">{approvedQuestions.reduce((s, q) => s + q.upvotes, 0)}</p>
-                    <p className="text-xs text-gray-500">Total Upvotes</p>
-                  </div>
-                  <div className="text-center space-y-1">
-                    <p className="text-2xl font-bold text-green-600">
-                      {totalQuestions > 0 ? Math.round((approvedQuestions.filter((q) => q.status === 'answered').length / totalQuestions) * 100) : 0}%
-                    </p>
-                    <p className="text-xs text-gray-500">Answered</p>
-                  </div>
-                  <div className="text-center space-y-1">
-                    <p className="text-2xl font-bold text-gray-900">{unansweredClusters.length}</p>
-                    <p className="text-xs text-gray-500">Active Topics</p>
-                  </div>
-                </div>
+            {analyticsOpen && (() => {
+              const totalUps = approvedQuestions.reduce((s, q) => s + q.upvotes, 0)
+              const answeredCount = approvedQuestions.filter((q) => q.status === 'answered').length
+              const pctAnswered = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0
+              const engScore = totalQuestions + totalUps
+              const hostReplyCount = replies.filter((r) => r.is_host).length
 
-                {/* Answer progress bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{approvedQuestions.filter((q) => q.status === 'answered').length} answered</span>
-                    <span>{approvedQuestions.filter((q) => q.status !== 'answered').length} remaining</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full transition-all"
-                      style={{ width: `${totalQuestions > 0 ? (approvedQuestions.filter((q) => q.status === 'answered').length / totalQuestions) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
+              // Response time: avg minutes between question creation and first host reply
+              const responseTimes: number[] = []
+              for (const q of approvedQuestions) {
+                const firstReply = replies
+                  .filter((r) => r.question_id === q.id && r.is_host)
+                  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
+                if (firstReply) {
+                  const mins = (new Date(firstReply.created_at).getTime() - new Date(q.created_at).getTime()) / 60000
+                  if (mins >= 0) responseTimes.push(mins)
+                }
+              }
+              const avgResponseMin = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null
 
-                {/* Top questions */}
-                {approvedQuestions.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Most Upvoted</p>
-                    {[...approvedQuestions].sort((a, b) => b.upvotes - a.upvotes).slice(0, 3).map((q) => (
-                      <div key={q.id} className="flex items-center gap-3 text-sm">
-                        <span className="shrink-0 font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                          ▲ {q.upvotes}
-                        </span>
-                        <p className="text-gray-700 truncate">{q.text}</p>
+              // Engagement gaps: clusters with high upvotes but no host replies
+              const gaps = unansweredClusters
+                .map((c) => ({
+                  ...c,
+                  totalUps: c.questions.reduce((s, q) => s + q.upvotes, 0),
+                  hasReply: c.questions.some((q) => replies.some((r) => r.question_id === q.id && r.is_host)),
+                }))
+                .filter((c) => c.totalUps >= 2 && !c.hasReply)
+                .sort((a, b) => b.totalUps - a.totalUps)
+
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
+                  {/* Row 1: Key metrics */}
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    {[
+                      { label: 'Questions', value: totalQuestions, color: 'text-gray-900' },
+                      { label: 'Upvotes', value: totalUps, color: 'text-blue-600' },
+                      { label: 'Answered', value: `${pctAnswered}%`, color: pctAnswered >= 75 ? 'text-green-600' : pctAnswered >= 50 ? 'text-amber-600' : 'text-red-500' },
+                      { label: 'Topics', value: unansweredClusters.length + answeredClusters.length, color: 'text-gray-900' },
+                      { label: 'Replies', value: hostReplyCount, color: 'text-gray-900' },
+                      { label: 'Engagement', value: engScore, color: 'text-purple-600' },
+                    ].map((m) => (
+                      <div key={m.label} className="text-center space-y-0.5">
+                        <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">{m.label}</p>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* Answer progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{answeredCount} answered</span>
+                      <span>{totalQuestions - answeredCount} remaining</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-500 h-2 rounded-full transition-all"
+                        style={{ width: `${pctAnswered}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Response time */}
+                  {avgResponseMin !== null && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-gray-500">Avg response time:</span>
+                      <span className="font-medium text-gray-900">
+                        {avgResponseMin < 1 ? '<1 min' : avgResponseMin < 60 ? `${avgResponseMin} min` : `${Math.round(avgResponseMin / 60)}h ${avgResponseMin % 60}m`}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Engagement gaps */}
+                  {gaps.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Engagement Gaps</p>
+                      <p className="text-xs text-gray-500">Popular topics with no host response yet:</p>
+                      {gaps.slice(0, 3).map((c) => (
+                        <div key={c.id} className="flex items-center gap-2 text-sm bg-amber-50 rounded-lg px-3 py-2">
+                          <span className="font-mono text-xs font-bold text-amber-700">▲{c.totalUps}</span>
+                          <span className="text-amber-900 truncate">{c.title}: {c.summary_question}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Top questions */}
+                  {approvedQuestions.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Most Upvoted</p>
+                      {[...approvedQuestions].sort((a, b) => b.upvotes - a.upvotes).slice(0, 3).map((q) => (
+                        <div key={q.id} className="flex items-center gap-3 text-sm">
+                          <span className="shrink-0 font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            ▲ {q.upvotes}
+                          </span>
+                          <p className="text-gray-700 truncate">{q.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <a href="/analytics" className="block text-center text-xs text-blue-600 hover:underline pt-1">
+                    View global analytics
+                  </a>
+                </div>
+              )
+            })()}
           </section>
         )}
           </div>
