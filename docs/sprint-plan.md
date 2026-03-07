@@ -1,0 +1,419 @@
+# Query — Detailed Sprint Plan
+
+## Current State (What's Built)
+
+### Already Working
+- [x] Session creation with 6-char code
+- [x] Attendee join via code
+- [x] Question submission (500-char limit, anonymous toggle)
+- [x] As-you-type similar question detection (upvote instead)
+- [x] Real-time AI clustering via Claude Haiku
+- [x] AI-generated summary question per cluster
+- [x] Upvote/un-upvote with sorted question list
+- [x] Mark questions/clusters as answered (with unmark)
+- [x] Collapsible answered section with cluster subtabs
+- [x] Threaded replies (host + attendee)
+- [x] Host reply auto-marks question as answered
+- [x] "My Questions" tab for attendees
+- [x] Copy session code + copy join link buttons
+- [x] Real-time Supabase subscriptions on all tables
+- [x] Connection status indicator
+
+### What's Missing for MVP
+- [ ] Presentation display view (projectable)
+- [ ] Question moderation toggle
+- [ ] Export session data
+- [ ] Session description visible to attendees
+- [ ] Attendee cluster view (read-only)
+- [ ] "Discussing now" cluster highlight
+- [ ] Better empty states & onboarding
+
+---
+
+## Sprint 1: Event-Ready MVP Polish
+
+**Goal**: Make Query usable at a real live event. A host should be able to create a session, project it on screen, moderate questions, and manage the session end-to-end.
+
+### 1.1 Presentation Display View (`/present/[code]`)
+**Priority**: Critical — every competitor has this, events need a projectable screen
+
+**What it is**: A clean, full-screen, dark-themed page designed to be projected on a screen or shared via screen-share during an event.
+
+**UI spec**:
+- Full-screen layout, dark background (dark gray/black), large readable text
+- Top bar: Session title + "Query" branding + live question count
+- Main content area cycles through or shows:
+  - The currently highlighted cluster's summary question (large text, centered)
+  - Question count badge ("12 people asked about this")
+  - Below: scrolling list of top clusters sorted by question count
+  - Each cluster shows: title, question count, summary question preview
+- Auto-updates in real time as new questions come in
+- No controls visible (this is attendee-facing / projector view)
+- Optional: QR code overlay with join link so attendees can scan to join
+
+**Route**: `app/present/[code]/page.tsx`
+
+**Data**: Same Supabase subscriptions as moderator page (questions, clusters). Read-only.
+
+**Files to create**:
+- `app/present/[code]/page.tsx`
+
+**Estimated complexity**: Medium
+
+---
+
+### 1.2 Question Moderation Toggle
+**Priority**: Critical — hosts expect to approve questions before they go public. Slido charges $720/yr for this.
+
+**What it is**: When enabled, new questions go into a "pending review" state. The host sees them in a review queue and can approve or dismiss. Only approved questions appear to attendees and in clusters.
+
+**Database changes**:
+- Add `moderation_enabled boolean not null default false` to `sessions` table
+- Add `approved boolean not null default true` to `questions` table (default true so existing questions aren't broken)
+- Migration SQL file: `supabase-add-moderation.sql`
+
+**Host flow**:
+- Toggle in session header: "Moderation: On/Off"
+- When ON, new questions arrive with `approved = false`
+- New section on moderator dashboard: "Pending Review" (above clusters)
+  - Shows unapproved questions with Approve / Dismiss buttons
+  - Approve sets `approved = true` and triggers clustering
+  - Dismiss deletes the question (or archives it)
+- Clustering API only runs on approved questions
+
+**Attendee flow**:
+- When moderation is ON, after submitting a question, attendee sees: "Your question is pending moderator review"
+- Their question appears in "My Questions" tab with a "Pending Review" badge
+- Once approved, status changes to "Pending" (normal)
+
+**Files to modify**:
+- `lib/supabase.ts` — update Session type
+- `app/session/[code]/page.tsx` — add moderation toggle + pending review section
+- `app/join/[code]/page.tsx` — show "pending review" state
+- `app/api/cluster/route.ts` — only cluster approved questions
+- `supabase-schema.sql` — update schema
+- New: `supabase-add-moderation.sql` — migration
+
+**Estimated complexity**: Medium-High
+
+---
+
+### 1.3 Export Session Data
+**Priority**: High — Slido paywalls this. We give it free.
+
+**What it is**: A button on the moderator dashboard that downloads all session data as a CSV file.
+
+**Export format** (CSV with columns):
+```
+Cluster, Summary Question, Question Text, Author, Anonymous, Upvotes, Status, Replies, Timestamp
+```
+
+**UI**: "Export" button in the session header, next to the copy buttons. Downloads immediately.
+
+**Implementation**: Client-side CSV generation from the already-loaded questions/clusters/replies state. No API needed.
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add export button + CSV generation function
+
+**Estimated complexity**: Low
+
+---
+
+### 1.4 Session Description on Join Page
+**Priority**: Medium — builds trust, gives attendees context
+
+**What it is**: The session description (already stored in DB) is displayed on the attendee join page below the session title.
+
+**UI**: Below the header title, show the description in a muted text block. If no description, show nothing.
+
+**Files to modify**:
+- `app/join/[code]/page.tsx` — display `session.description` in the header area
+
+**Estimated complexity**: Very Low
+
+---
+
+### 1.5 Better Empty States & Onboarding
+**Priority**: Medium — top Slido complaint is confusing first-time experience
+
+**What it is**: Improve the empty state on the moderator dashboard and the home page.
+
+**Moderator empty state improvements**:
+- Current: "Waiting for questions..." with code
+- Better: Step-by-step guide card:
+  1. "Share this code with your audience" (code + copy buttons)
+  2. "Questions will appear here, automatically grouped by topic"
+  3. "Mark clusters as answered as you address them"
+- Show the join URL prominently
+- Add a QR code for the join link (using a simple QR generation)
+
+**Home page improvements**:
+- Clearer value proposition text
+- Visual showing the clustering feature
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — improve empty state
+- `app/page.tsx` — improve home page copy
+
+**Estimated complexity**: Low-Medium
+
+---
+
+## Sprint 2: Differentiation Features
+
+**Goal**: Ship features that no competitor has. Make the "why Query over Slido" argument obvious.
+
+### 2.1 "Discussing Now" Cluster Highlight
+**Priority**: High — creates two-way awareness between host and audience
+
+**What it is**: Host can mark a cluster as "currently being discussed." This is shown prominently on the attendee view and the presentation display.
+
+**Database changes**:
+- Add `highlighted_cluster_id uuid references clusters(id)` to `sessions` table
+
+**Host flow**:
+- Each cluster card gets a "Discuss" button (microphone or spotlight icon)
+- Clicking it sets this cluster as the highlighted one (only one at a time)
+- Clicking again un-highlights
+
+**Attendee flow**:
+- If a cluster is highlighted, show a banner at the top of the attendee page: "Currently discussing: [cluster summary question]"
+- In the "All Questions" tab, questions belonging to the highlighted cluster get a subtle highlight
+
+**Presentation display**:
+- The highlighted cluster's summary question is shown prominently (largest text, centered)
+
+**Files to modify**:
+- `lib/supabase.ts` — update Session type
+- `app/session/[code]/page.tsx` — add highlight button to ClusterCard
+- `app/join/[code]/page.tsx` — show highlighted cluster banner
+- `app/present/[code]/page.tsx` — show highlighted cluster prominently
+- `supabase-schema.sql` + migration
+
+**Estimated complexity**: Medium
+
+---
+
+### 2.2 Attendee Cluster View (Read-Only)
+**Priority**: High — attendees see their question is part of a larger theme
+
+**What it is**: A new tab on the attendee page showing the same cluster view the host sees, but read-only (no mark/unmark, no moderation).
+
+**UI**: New tab "Topics" between "All Questions" and "My Questions"
+- Shows clusters with question counts
+- Expandable to see the AI summary question + individual questions
+- Upvote buttons still work from this view
+- Highlighted cluster (if any) shown at top with a badge
+
+**Files to modify**:
+- `app/join/[code]/page.tsx` — add "Topics" tab, load clusters, subscribe to cluster changes
+
+**Estimated complexity**: Medium
+
+---
+
+### 2.3 Post-Session Follow-Up Answers
+**Priority**: High — massive gap in every competitor, your dad's suggestion
+
+**What it is**: After a session ends, unanswered questions remain accessible. The host can write follow-up answers asynchronously.
+
+**How it works**:
+- Sessions don't "close" — the URL remains live forever
+- After the event, the host can still visit `/session/[code]` and reply to unanswered questions
+- Attendees can revisit `/join/[code]` anytime and see if their question got a follow-up response
+- The host reply system already supports this (replies table + real-time)
+- Add a visual indicator: "Session ended — follow-up answers may still be posted"
+
+**Optional enhancement**: Add `ended_at timestamp` to sessions table. Host clicks "End Session" which:
+- Stops accepting new questions
+- Shows "This session has ended" to attendees
+- But the page remains viewable with all Q&A + follow-up answers
+
+**Database changes**:
+- Add `ended_at timestamp with time zone` to `sessions` table
+
+**Files to modify**:
+- `lib/supabase.ts` — update Session type
+- `app/session/[code]/page.tsx` — add "End Session" button, post-session mode
+- `app/join/[code]/page.tsx` — show ended state, disable new question submission, but keep everything viewable
+- Migration SQL
+
+**Estimated complexity**: Medium
+
+---
+
+### 2.4 Pre-Session Question Collection
+**Priority**: Medium — huge for prepared speakers, Pigeonhole has this
+
+**What it is**: The session link is live before the event starts. Attendees can submit questions early. Questions accumulate and cluster before the host opens the session.
+
+**How it works**:
+- Add `starts_at timestamp with time zone` to sessions table (optional field)
+- If set, the attendee page shows: "Session starts at [time]. Submit your questions early!"
+- Questions are accepted and clustered normally
+- When the host opens the session, they already have a pre-organized cluster view
+- If `starts_at` is not set, behavior is the same as today (session is immediately live)
+
+**Files to modify**:
+- `app/create/page.tsx` — add optional "Session start time" field
+- `lib/supabase.ts` — update Session type
+- `app/join/[code]/page.tsx` — show pre-session state
+- Migration SQL
+
+**Estimated complexity**: Low-Medium
+
+---
+
+### 2.5 Session Analytics
+**Priority**: Medium — Slido locks behind Enterprise tier
+
+**What it is**: Simple analytics shown to the host on the moderator dashboard.
+
+**Metrics**:
+- Total questions submitted
+- Total unique participants (by name, rough estimate)
+- Questions answered vs unanswered (percentage bar)
+- Most active cluster (by question count)
+- Questions over time (simple bar chart by 5-minute intervals)
+- Top upvoted questions
+
+**UI**: Collapsible "Analytics" section at the bottom of the moderator dashboard, or a separate tab.
+
+**Implementation**: All computed client-side from existing data. No new DB queries needed.
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add analytics section
+
+**Estimated complexity**: Medium
+
+---
+
+## Sprint 3: Phase 2 Start
+
+**Goal**: Begin reducing moderator workload with AI assistance.
+
+### 3.1 Multi-Moderator Support
+- Multiple hosts can view the moderator dashboard simultaneously (already works with real-time)
+- Add "claim" functionality: a moderator can claim a cluster ("I'm handling this")
+- Show who claimed what to prevent duplicate work
+- Requires adding a `claimed_by` field to clusters
+
+### 3.2 Contextual Auto-Answering
+- Host uploads slides (PDF) or a description before the session
+- AI drafts suggested answers to questions based on uploaded context
+- "Suggested Answer" badge on questions with AI-drafted responses
+- Host can approve/edit/reject before it goes live
+- Toggle to disable entirely
+
+### 3.3 Recurring Session FAQ Library
+- After each session, host can one-click convert answered clusters into FAQ entries
+- FAQ library persists across sessions
+- For recurring events (e.g., weekly all-hands), new questions are checked against the FAQ
+- If a match is found, AI surfaces the previous answer automatically
+
+### 3.4 Unanswered Question Report
+- Post-session email/page showing every unanswered question
+- Host can write follow-up answers (already partially built in 2.3)
+- Attendees get notified when their question gets a follow-up
+
+---
+
+## Implementation Priority Matrix
+
+```
+                    HIGH IMPACT
+                        |
+     ┌──────────────────┼──────────────────┐
+     │                  |                  │
+     │  Presentation    │  AI Auto-Answer  │
+     │  Display View    │  (Sprint 3)      │
+     │                  |                  │
+     │  Moderation      │  Multi-Moderator │
+     │  Toggle          │  (Sprint 3)      │
+     │                  |                  │
+LOW ─┼──────────────────┼──────────────────┼─ HIGH
+EFFORT│                 |                  │  EFFORT
+     │  Export CSV      │  FAQ Library     │
+     │                  |  (Sprint 3)      │
+     │  Session Desc    │                  │
+     │  on Join Page    │  Pre-Session     │
+     │                  |  Collection      │
+     │  Better Empty    │                  │
+     │  States          │  Analytics       │
+     │                  |                  │
+     └──────────────────┼──────────────────┘
+                        |
+                    LOW IMPACT
+```
+
+---
+
+## Sprint 1 Execution Order
+
+Do these in this exact order for maximum incremental value:
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Session description on join page | 30 min | Quick win, warm-up |
+| 2 | Export session data (CSV) | 1 hr | Quick win, immediate differentiator vs Slido |
+| 3 | Better empty states | 1-2 hrs | Improves first impression |
+| 4 | Presentation display view | 3-4 hrs | Required for real events |
+| 5 | Question moderation toggle | 4-5 hrs | Most complex, biggest value |
+
+**Total Sprint 1 estimate**: ~10-12 hrs of implementation
+
+---
+
+## Sprint 2 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | "Discussing now" highlight | 2-3 hrs | Quick to build, great UX |
+| 2 | Attendee cluster view | 2-3 hrs | Leverages existing cluster data |
+| 3 | Post-session follow-up | 2-3 hrs | Unique differentiator |
+| 4 | Pre-session question collection | 2-3 hrs | Builds on existing flow |
+| 5 | Session analytics | 3-4 hrs | Nice-to-have, polishing |
+
+**Total Sprint 2 estimate**: ~12-16 hrs of implementation
+
+---
+
+## Files That Will Be Created/Modified
+
+### New Files
+```
+app/present/[code]/page.tsx          # Presentation display view (Sprint 1)
+supabase-add-moderation.sql          # Moderation migration (Sprint 1)
+docs/competitive-analysis.md         # This analysis
+docs/sprint-plan.md                  # This plan
+```
+
+### Modified Files
+```
+# Sprint 1
+app/session/[code]/page.tsx          # Export, moderation, empty states
+app/join/[code]/page.tsx             # Session description, moderation status
+app/api/cluster/route.ts             # Only cluster approved questions
+app/page.tsx                         # Better home page
+lib/supabase.ts                      # Updated types
+supabase-schema.sql                  # Updated schema
+
+# Sprint 2
+app/session/[code]/page.tsx          # Highlight, analytics, end session
+app/join/[code]/page.tsx             # Cluster view tab, pre-session, ended state
+app/present/[code]/page.tsx          # Highlighted cluster display
+app/create/page.tsx                  # Start time field
+lib/supabase.ts                      # Updated types
+supabase-schema.sql                  # Updated schema
+```
+
+---
+
+## Definition of Done (per feature)
+
+- [ ] Feature works end-to-end (host + attendee flows)
+- [ ] Real-time updates work (Supabase subscriptions)
+- [ ] TypeScript compiles with no errors
+- [ ] Mobile-responsive (attendee pages especially)
+- [ ] Empty/error states handled gracefully
+- [ ] README updated if new setup steps required

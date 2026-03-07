@@ -33,3 +33,13 @@ export type Cluster = {
   status: 'unanswered' | 'answered'
   created_at: string
 }
+
+export type Reply = {
+  id: string
+  question_id: string
+  session_id: string
+  text: string
+  author_name: string | null
+  is_host: boolean
+  created_at: string
+}

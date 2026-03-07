@@ -27,7 +27,9 @@ npm install
 2. In the Supabase dashboard, open the **SQL Editor**.
 3. Paste the contents of `supabase-schema.sql` and run it.
 
-This creates the `sessions`, `questions`, and `clusters` tables and enables real-time.
+This creates the `sessions`, `questions`, `clusters`, and `replies` tables and enables real-time.
+
+> **Upgrading?** If you already have the database set up from an earlier version, run `supabase-add-replies.sql` in the SQL Editor to add the `replies` table.
 
 ### 3. Add environment variables
 
@@ -67,13 +69,18 @@ Open [http://localhost:3000](http://localhost:3000).
 2. Type a question (500-char limit with live counter)
 3. As-you-type similarity search suggests existing questions to upvote instead
 4. Submit → question appears in real time on the moderator dashboard
+5. Upvote/un-upvote other questions; view all questions sorted by popularity
+6. Reply to any question with follow-ups; see host responses in real time
+7. Track your own submissions in the "My Questions" tab
 
 ### Moderator Flow
 1. Click "Host a Session" → fill in title + optional description → `/session/[code]`
-2. Share the join code/link with attendees
+2. Share the join code or join link with attendees
 3. As questions arrive, they're automatically clustered by AI topic
 4. Each cluster shows a generated summary question
-5. Mark individual questions or entire clusters as answered
+5. Mark individual questions or entire clusters as answered (or unmark them)
+6. Reply to questions directly — responses are tagged as "Host"
+7. View answered questions in a collapsible section with cluster subtabs
 
 ### Clustering
 Every new question triggers a call to `/api/cluster`, which:
@@ -98,6 +105,7 @@ lib/
   supabase.ts               # Supabase client + types
   clustering.ts             # AI clustering logic
 
-supabase-schema.sql         # Database schema
+supabase-schema.sql         # Full database schema (fresh setup)
+supabase-add-replies.sql    # Migration to add replies table (existing DBs)
 .env.local.example          # Environment variable template
 ```

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Cluster } from '@/lib/supabase'
+import { supabase, Session, Question, Cluster, Reply } from '@/lib/supabase'
 
 type ClusterWithQuestions = Cluster & { questions: Question[] }
 
@@ -30,41 +30,112 @@ function Spinner() {
 
 function QuestionRow({
   question,
+  replies,
   onMarkAnswered,
+  onMarkUnanswered,
+  onReply,
 }: {
   question: Question
+  replies: Reply[]
   onMarkAnswered: (id: string) => void
+  onMarkUnanswered?: (id: string) => void
+  onReply: (questionId: string, text: string) => Promise<void>
 }) {
   const [marking, setMarking] = useState(false)
+  const [showReplies, setShowReplies] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  async function handleMark() {
+  async function handleToggle() {
     setMarking(true)
-    await onMarkAnswered(question.id)
+    if (question.status === 'answered' && onMarkUnanswered) {
+      await onMarkUnanswered(question.id)
+    } else {
+      await onMarkAnswered(question.id)
+    }
     setMarking(false)
   }
 
+  async function handleReply(e: React.FormEvent) {
+    e.preventDefault()
+    const text = replyText.trim()
+    if (!text) return
+    setSubmitting(true)
+    await onReply(question.id, text)
+    setReplyText('')
+    setSubmitting(false)
+  }
+
   return (
-    <div className="flex items-start gap-3 py-2.5">
-      <div className="flex-1 min-w-0 space-y-1">
-        <p className="text-sm text-gray-800">{question.text}</p>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <span>{question.is_anonymous ? 'Anonymous' : question.author_name || 'Anonymous'}</span>
-          <span>·</span>
-          <span>▲ {question.upvotes}</span>
+    <div className="py-2.5 space-y-2">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="text-sm text-gray-800">{question.text}</p>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>{question.is_anonymous ? 'Anonymous' : question.author_name || 'Anonymous'}</span>
+            <span>·</span>
+            <span>▲ {question.upvotes}</span>
+            <span>·</span>
+            <button
+              onClick={() => setShowReplies((o) => !o)}
+              className="text-blue-500 hover:text-blue-700 transition-colors"
+            >
+              {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : 'Reply'}
+            </button>
+          </div>
         </div>
+        {question.status === 'answered' ? (
+          <button
+            onClick={handleToggle}
+            disabled={marking}
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-green-200 disabled:opacity-50 transition-colors"
+          >
+            {marking ? <Spinner /> : '✓'} Answered
+          </button>
+        ) : (
+          <button
+            onClick={handleToggle}
+            disabled={marking}
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+          >
+            {marking ? <Spinner /> : '✓'} Mark
+          </button>
+        )}
       </div>
-      {question.status === 'answered' ? (
-        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-          ✓ Answered
-        </span>
-      ) : (
-        <button
-          onClick={handleMark}
-          disabled={marking}
-          className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-gray-200 text-gray-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
-        >
-          {marking ? <Spinner /> : '✓'} Mark
-        </button>
+
+      {showReplies && (
+        <div className="ml-4 pl-3 border-l-2 border-gray-200 space-y-2">
+          {replies.map((r) => (
+            <div key={r.id} className="space-y-0.5">
+              <p className="text-sm text-gray-700">{r.text}</p>
+              <p className="text-xs text-gray-400">
+                <span className={r.is_host ? 'font-semibold text-blue-600' : ''}>
+                  {r.is_host ? '★ Host' : r.author_name || 'Anonymous'}
+                </span>
+                <span className="mx-1">·</span>
+                {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          ))}
+          <form onSubmit={handleReply} className="flex gap-2">
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type a response..."
+              maxLength={500}
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              disabled={submitting || !replyText.trim()}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1"
+            >
+              {submitting && <Spinner />}
+              Send
+            </button>
+          </form>
+        </div>
       )}
     </div>
   )
@@ -72,13 +143,21 @@ function QuestionRow({
 
 function ClusterCard({
   cluster,
+  replies,
   onMarkClusterAnswered,
+  onMarkClusterUnanswered,
   onMarkQuestionAnswered,
+  onMarkQuestionUnanswered,
+  onReply,
   muted,
 }: {
   cluster: ClusterWithQuestions
+  replies: Reply[]
   onMarkClusterAnswered: (id: string) => void
+  onMarkClusterUnanswered: (id: string) => void
   onMarkQuestionAnswered: (id: string) => void
+  onMarkQuestionUnanswered: (id: string) => void
+  onReply: (questionId: string, text: string) => Promise<void>
   muted: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -86,7 +165,11 @@ function ClusterCard({
 
   async function handleMarkAll() {
     setMarking(true)
-    await onMarkClusterAnswered(cluster.id)
+    if (muted) {
+      await onMarkClusterUnanswered(cluster.id)
+    } else {
+      await onMarkClusterAnswered(cluster.id)
+    }
     setMarking(false)
   }
 
@@ -140,23 +223,28 @@ function ClusterCard({
                 <QuestionRow
                   key={q.id}
                   question={q}
+                  replies={replies.filter((r) => r.question_id === q.id)}
                   onMarkAnswered={onMarkQuestionAnswered}
+                  onMarkUnanswered={onMarkQuestionUnanswered}
+                  onReply={onReply}
                 />
               ))}
             </div>
           )}
 
-          {/* Mark all button — only for unanswered clusters */}
-          {!muted && cluster.status === 'unanswered' && (
-            <button
-              onClick={handleMarkAll}
-              disabled={marking}
-              className="w-full py-2 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            >
-              {marking && <Spinner />}
-              Mark Entire Cluster as Answered
-            </button>
-          )}
+          {/* Mark/unmark all button */}
+          <button
+            onClick={handleMarkAll}
+            disabled={marking}
+            className={`w-full py-2 px-4 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
+              muted
+                ? 'bg-gray-200 text-gray-700 hover:bg-red-50 hover:text-red-600'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+          >
+            {marking && <Spinner />}
+            {muted ? 'Unmark Entire Cluster' : 'Mark Entire Cluster as Answered'}
+          </button>
         </div>
       )}
     </div>
@@ -172,8 +260,14 @@ export default function ModeratorPage() {
   const [notFound, setNotFound] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [clusters, setClusters] = useState<Cluster[]>([])
+  const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const [clustersOpen, setClustersOpen] = useState(true)
+  const [unclusteredOpen, setUnclusteredOpen] = useState(true)
+  const [answeredOpen, setAnsweredOpen] = useState(false)
+  const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
 
   const attendeeUrl =
     typeof window !== 'undefined'
@@ -195,12 +289,14 @@ export default function ModeratorPage() {
     if (!session) return
 
     async function loadData() {
-      const [{ data: qs }, { data: cs }] = await Promise.all([
+      const [{ data: qs }, { data: cs }, { data: rs }] = await Promise.all([
         supabase.from('questions').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
         supabase.from('clusters').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
+        supabase.from('replies').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
       ])
       setQuestions(qs || [])
       setClusters(cs || [])
+      setReplies(rs || [])
     }
     loadData()
 
@@ -236,6 +332,15 @@ export default function ModeratorPage() {
           }
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'replies', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setReplies((prev) => [...prev, payload.new as Reply])
+          } else if (payload.eventType === 'DELETE') {
+            setReplies((prev) => prev.filter((r) => r.id !== payload.old.id))
+          }
+        }
+      )
       .subscribe((status) => {
         setConnected(status === 'SUBSCRIBED')
       })
@@ -247,17 +352,43 @@ export default function ModeratorPage() {
     await supabase.from('questions').update({ status: 'answered' }).eq('id', questionId)
   }
 
+  async function markQuestionUnanswered(questionId: string) {
+    await supabase.from('questions').update({ status: 'pending' }).eq('id', questionId)
+  }
+
   async function markClusterAnswered(clusterId: string) {
-    // Mark all questions in cluster
     await supabase.from('questions').update({ status: 'answered' }).eq('cluster_id', clusterId)
-    // Mark cluster
     await supabase.from('clusters').update({ status: 'answered' }).eq('id', clusterId)
+  }
+
+  async function markClusterUnanswered(clusterId: string) {
+    await supabase.from('questions').update({ status: 'pending' }).eq('cluster_id', clusterId)
+    await supabase.from('clusters').update({ status: 'unanswered' }).eq('id', clusterId)
+  }
+
+  async function handleHostReply(questionId: string, text: string) {
+    if (!session) return
+    await supabase.from('replies').insert({
+      question_id: questionId,
+      session_id: session.id,
+      text,
+      author_name: null,
+      is_host: true,
+    })
+    await markQuestionAnswered(questionId)
   }
 
   function copyLink() {
     navigator.clipboard.writeText(attendeeUrl).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
     })
   }
 
@@ -271,6 +402,12 @@ export default function ModeratorPage() {
     .map((c) => ({ ...c, questions: questions.filter((q) => q.cluster_id === c.id) }))
 
   const unclusteredQuestions = questions.filter((q) => !q.cluster_id && q.status !== 'answered')
+  const answeredUnclusteredQuestions = questions.filter((q) => !q.cluster_id && q.status === 'answered')
+  // Individually answered questions in otherwise unanswered clusters
+  const answeredOrphanQuestions = questions.filter(
+    (q) => q.status === 'answered' && q.cluster_id && clusters.find((c) => c.id === q.cluster_id)?.status === 'unanswered'
+  )
+  const hasAnswered = answeredClusters.length > 0 || answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0
 
   const totalQuestions = questions.length
 
@@ -323,6 +460,12 @@ export default function ModeratorPage() {
               </span>
             </div>
             <button
+              onClick={copyCode}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              {codeCopied ? '✓ Copied!' : '⎘ Copy Session Code'}
+            </button>
+            <button
               onClick={copyLink}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             >
@@ -341,6 +484,13 @@ export default function ModeratorPage() {
             <div className="inline-flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-5 py-3">
               <span className="font-mono text-2xl font-bold tracking-widest text-gray-900">{code}</span>
               <button
+                onClick={copyCode}
+                className="text-sm text-blue-600 hover:underline font-medium"
+              >
+                {codeCopied ? 'Copied!' : 'Copy code'}
+              </button>
+              <span className="text-gray-300">·</span>
+              <button
                 onClick={copyLink}
                 className="text-sm text-blue-600 hover:underline font-medium"
               >
@@ -352,17 +502,30 @@ export default function ModeratorPage() {
         )}
 
         {/* Unanswered clusters */}
-        {(unansweredClusters.length > 0 || unclusteredQuestions.length > 0) && (
+        {unansweredClusters.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              Unanswered Clusters
-            </h2>
-            {unansweredClusters.map((c) => (
+            <button
+              onClick={() => setClustersOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide group-hover:text-gray-700 transition-colors">
+                Unanswered Clusters
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                {unansweredClusters.reduce((n, c) => n + c.questions.length, 0)}
+              </span>
+              <ChevronIcon open={clustersOpen} />
+            </button>
+            {clustersOpen && unansweredClusters.map((c) => (
               <ClusterCard
                 key={c.id}
                 cluster={c}
+                replies={replies.filter((r) => c.questions.some((q) => q.id === r.question_id))}
                 onMarkClusterAnswered={markClusterAnswered}
+                onMarkClusterUnanswered={markClusterUnanswered}
                 onMarkQuestionAnswered={markQuestionAnswered}
+                onMarkQuestionUnanswered={markQuestionUnanswered}
+                onReply={handleHostReply}
                 muted={false}
               />
             ))}
@@ -372,34 +535,112 @@ export default function ModeratorPage() {
         {/* Unclustered questions */}
         {unclusteredQuestions.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              Unclustered Questions
-            </h2>
-            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-              {unclusteredQuestions.map((q) => (
-                <div key={q.id} className="px-5">
-                  <QuestionRow question={q} onMarkAnswered={markQuestionAnswered} />
-                </div>
-              ))}
-            </div>
+            <button
+              onClick={() => setUnclusteredOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide group-hover:text-gray-700 transition-colors">
+                Unclustered Questions
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                {unclusteredQuestions.length}
+              </span>
+              <ChevronIcon open={unclusteredOpen} />
+            </button>
+            {unclusteredOpen && (
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                {unclusteredQuestions.map((q) => (
+                  <div key={q.id} className="px-5">
+                    <QuestionRow question={q} replies={replies.filter((r) => r.question_id === q.id)} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
-        {/* Answered clusters */}
-        {answeredClusters.length > 0 && (
+        {/* Answered dropdown */}
+        {hasAnswered && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              Answered
-            </h2>
-            {answeredClusters.map((c) => (
-              <ClusterCard
-                key={c.id}
-                cluster={c}
-                onMarkClusterAnswered={markClusterAnswered}
-                onMarkQuestionAnswered={markQuestionAnswered}
-                muted={true}
-              />
-            ))}
+            <button
+              onClick={() => setAnsweredOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide group-hover:text-gray-700 transition-colors">
+                Answered
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                {answeredClusters.reduce((n, c) => n + c.questions.length, 0) + answeredUnclusteredQuestions.length + answeredOrphanQuestions.length}
+              </span>
+              <ChevronIcon open={answeredOpen} />
+            </button>
+
+            {answeredOpen && (
+              <div className="space-y-4">
+                {/* Subtabs */}
+                <div className="flex flex-wrap gap-2">
+                  {(answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0) && (
+                    <button
+                      onClick={() => setAnsweredSubtab('misc')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        answeredSubtab === 'misc'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      Misc ({answeredUnclusteredQuestions.length + answeredOrphanQuestions.length})
+                    </button>
+                  )}
+                  {answeredClusters.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setAnsweredSubtab(c.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        answeredSubtab === c.id
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {c.title} ({c.questions.length})
+                    </button>
+                  ))}
+                </div>
+
+                {/* Subtab content: Misc */}
+                {answeredSubtab === 'misc' && (answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0) && (
+                  <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                    {[...answeredUnclusteredQuestions, ...answeredOrphanQuestions].map((q) => (
+                      <div key={q.id} className="px-5">
+                        <QuestionRow
+                          question={q}
+                          replies={replies.filter((r) => r.question_id === q.id)}
+                          onMarkAnswered={markQuestionAnswered}
+                          onMarkUnanswered={markQuestionUnanswered}
+                          onReply={handleHostReply}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Subtab content: Cluster */}
+                {answeredClusters.map((c) =>
+                  answeredSubtab === c.id ? (
+                    <ClusterCard
+                      key={c.id}
+                      cluster={c}
+                      replies={replies.filter((r) => c.questions.some((q) => q.id === r.question_id))}
+                      onMarkClusterAnswered={markClusterAnswered}
+                      onMarkClusterUnanswered={markClusterUnanswered}
+                      onMarkQuestionAnswered={markQuestionAnswered}
+                      onMarkQuestionUnanswered={markQuestionUnanswered}
+                      onReply={handleHostReply}
+                      muted={true}
+                    />
+                  ) : null
+                )}
+              </div>
+            )}
           </section>
         )}
       </div>
