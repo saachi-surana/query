@@ -9,6 +9,7 @@ export default function AnalyticsPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
 
@@ -130,16 +131,77 @@ export default function AnalyticsPage() {
     setAiLoading(false)
   }
 
+  const liveSessions = sessions.filter((s) => !s.ended_at && (!s.starts_at || new Date(s.starts_at) <= new Date()))
+  const upcomingSessions = sessions.filter((s) => s.starts_at && new Date(s.starts_at) > new Date() && !s.ended_at)
+  const pastSessions = sessions.filter((s) => s.ended_at).slice(0, 10)
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center gap-4">
+    <main className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 shrink-0 z-20">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setSidebarOpen((o) => !o)} className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
           <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity">Query</a>
-          <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200`}>
+          <div className="p-4 space-y-6 w-64">
+            {liveSessions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  Live ({liveSessions.length})
+                </p>
+                {liveSessions.map((s) => (
+                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-700 hover:bg-gray-100 transition-colors">
+                    {s.title}
+                    <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {upcomingSessions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Upcoming</p>
+                {upcomingSessions.map((s) => (
+                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-700 hover:bg-gray-100 transition-colors">
+                    {s.title}
+                    <span className="block text-xs text-gray-400">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {pastSessions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Past</p>
+                {pastSessions.map((s) => (
+                  <a key={s.id} href={`/report/${s.code}`} className="block px-3 py-2 rounded-lg text-sm truncate text-gray-500 hover:bg-gray-100 transition-colors">
+                    {s.title}
+                    <span className="block text-xs text-gray-400 font-mono">{s.code}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-gray-200 space-y-1">
+              <a href="/create" className="block px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 font-medium transition-colors">+ New Session</a>
+              <a href="/analytics" className="block px-3 py-2 rounded-lg text-sm bg-blue-50 text-blue-700 font-medium">Analytics</a>
+              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">Profile (coming soon)</div>
+              <div className="px-3 py-2 rounded-lg text-sm text-gray-400 cursor-default">Settings (coming soon)</div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
@@ -319,6 +381,8 @@ export default function AnalyticsPage() {
             </div>
           </section>
         )}
+          </div>
+        </div>
       </div>
     </main>
   )
