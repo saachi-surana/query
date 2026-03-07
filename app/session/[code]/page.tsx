@@ -267,6 +267,7 @@ export default function ModeratorPage() {
   const [clustersOpen, setClustersOpen] = useState(true)
   const [unclusteredOpen, setUnclusteredOpen] = useState(true)
   const [answeredOpen, setAnsweredOpen] = useState(false)
+  const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
 
   const attendeeUrl =
@@ -318,6 +319,8 @@ export default function ModeratorPage() {
             setQuestions((prev) =>
               prev.map((q) => (q.id === (payload.new as Question).id ? (payload.new as Question) : q))
             )
+          } else if (payload.eventType === 'DELETE') {
+            setQuestions((prev) => prev.filter((q) => q.id !== payload.old.id))
           }
         }
       )
@@ -347,6 +350,30 @@ export default function ModeratorPage() {
 
     return () => { supabase.removeChannel(channel) }
   }, [session])
+
+  async function toggleModeration() {
+    if (!session) return
+    const newValue = !session.moderation_enabled
+    await supabase.from('sessions').update({ moderation_enabled: newValue }).eq('id', session.id)
+    setSession({ ...session, moderation_enabled: newValue })
+    setModerationBannerDismissed(false)
+  }
+
+  async function approveQuestion(questionId: string) {
+    await supabase.from('questions').update({ approved: true }).eq('id', questionId)
+    // Trigger clustering for the newly approved question
+    if (session) {
+      fetch('/api/cluster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, sessionId: session.id }),
+      }).catch(() => {})
+    }
+  }
+
+  async function dismissQuestion(questionId: string) {
+    await supabase.from('questions').delete().eq('id', questionId)
+  }
 
   async function markQuestionAnswered(questionId: string) {
     await supabase.from('questions').update({ status: 'answered' }).eq('id', questionId)
@@ -378,6 +405,37 @@ export default function ModeratorPage() {
     await markQuestionAnswered(questionId)
   }
 
+  function exportCSV() {
+    const escapeCSV = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const rows = [['Cluster', 'Summary Question', 'Question', 'Author', 'Anonymous', 'Upvotes', 'Status', 'Replies', 'Timestamp']]
+    for (const q of questions) {
+      const cluster = clusters.find((c) => c.id === q.cluster_id)
+      const qReplies = replies
+        .filter((r) => r.question_id === q.id)
+        .map((r) => `${r.is_host ? '[Host]' : (r.author_name || 'Anonymous')}: ${r.text}`)
+        .join(' | ')
+      rows.push([
+        escapeCSV(cluster?.title || 'Unclustered'),
+        escapeCSV(cluster?.summary_question || ''),
+        escapeCSV(q.text),
+        escapeCSV(q.is_anonymous ? 'Anonymous' : (q.author_name || 'Anonymous')),
+        q.is_anonymous ? 'Yes' : 'No',
+        String(q.upvotes),
+        q.status,
+        escapeCSV(qReplies),
+        new Date(q.created_at).toISOString(),
+      ])
+    }
+    const csv = rows.map((r) => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `query-${code}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function copyLink() {
     navigator.clipboard.writeText(attendeeUrl).then(() => {
       setCopied(true)
@@ -392,24 +450,27 @@ export default function ModeratorPage() {
     })
   }
 
-  // Build cluster+question structures
+  // Separate approved questions from pending review
+  const approvedQuestions = questions.filter((q) => q.approved)
+  const pendingReviewQuestions = questions.filter((q) => !q.approved)
+
+  // Build cluster+question structures (only from approved questions)
   const unansweredClusters: ClusterWithQuestions[] = clusters
     .filter((c) => c.status === 'unanswered')
-    .map((c) => ({ ...c, questions: questions.filter((q) => q.cluster_id === c.id) }))
+    .map((c) => ({ ...c, questions: approvedQuestions.filter((q) => q.cluster_id === c.id) }))
 
   const answeredClusters: ClusterWithQuestions[] = clusters
     .filter((c) => c.status === 'answered')
-    .map((c) => ({ ...c, questions: questions.filter((q) => q.cluster_id === c.id) }))
+    .map((c) => ({ ...c, questions: approvedQuestions.filter((q) => q.cluster_id === c.id) }))
 
-  const unclusteredQuestions = questions.filter((q) => !q.cluster_id && q.status !== 'answered')
-  const answeredUnclusteredQuestions = questions.filter((q) => !q.cluster_id && q.status === 'answered')
-  // Individually answered questions in otherwise unanswered clusters
-  const answeredOrphanQuestions = questions.filter(
+  const unclusteredQuestions = approvedQuestions.filter((q) => !q.cluster_id && q.status !== 'answered')
+  const answeredUnclusteredQuestions = approvedQuestions.filter((q) => !q.cluster_id && q.status === 'answered')
+  const answeredOrphanQuestions = approvedQuestions.filter(
     (q) => q.status === 'answered' && q.cluster_id && clusters.find((c) => c.id === q.cluster_id)?.status === 'unanswered'
   )
   const hasAnswered = answeredClusters.length > 0 || answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0
 
-  const totalQuestions = questions.length
+  const totalQuestions = approvedQuestions.length
 
   if (notFound) {
     return (
@@ -440,6 +501,27 @@ export default function ModeratorPage() {
         </div>
       )}
 
+      {/* Moderation banner */}
+      {session.moderation_enabled && !moderationBannerDismissed && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800 flex items-center justify-center gap-2">
+          <span>
+            Moderation is on — new questions will require your approval before attendees can see them.
+            {pendingReviewQuestions.length > 0 && (
+              <span className="font-semibold ml-1">
+                {pendingReviewQuestions.length} question{pendingReviewQuestions.length !== 1 ? 's' : ''} waiting for review.
+              </span>
+            )}
+          </span>
+          <button
+            onClick={() => setModerationBannerDismissed(true)}
+            className="shrink-0 ml-2 w-6 h-6 rounded-full bg-amber-200 hover:bg-amber-300 text-amber-800 font-bold text-base flex items-center justify-center transition-colors"
+            aria-label="Dismiss"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4">
@@ -460,6 +542,26 @@ export default function ModeratorPage() {
               </span>
             </div>
             <button
+              onClick={toggleModeration}
+              title={session.moderation_enabled
+                ? 'Click to turn off — questions will appear immediately'
+                : 'Click to turn on — you will approve questions before they appear'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                session.moderation_enabled
+                  ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              {session.moderation_enabled ? 'Moderation: On' : 'Moderation: Off'}
+            </button>
+            <button
+              onClick={exportCSV}
+              disabled={questions.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Export CSV
+            </button>
+            <button
               onClick={copyCode}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             >
@@ -476,28 +578,94 @@ export default function ModeratorPage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
-        {/* Empty state */}
-        {totalQuestions === 0 && (
-          <div className="text-center py-20 space-y-4">
-            <p className="text-2xl text-gray-400">Waiting for questions...</p>
-            <p className="text-gray-500 text-sm">Share your join code:</p>
-            <div className="inline-flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-5 py-3">
-              <span className="font-mono text-2xl font-bold tracking-widest text-gray-900">{code}</span>
-              <button
-                onClick={copyCode}
-                className="text-sm text-blue-600 hover:underline font-medium"
-              >
-                {codeCopied ? 'Copied!' : 'Copy code'}
-              </button>
-              <span className="text-gray-300">·</span>
-              <button
-                onClick={copyLink}
-                className="text-sm text-blue-600 hover:underline font-medium"
-              >
-                {copied ? 'Copied!' : 'Copy link'}
-              </button>
+        {/* Pending review queue */}
+        {session.moderation_enabled && pendingReviewQuestions.length === 0 && totalQuestions > 0 && (
+          <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 text-center text-sm text-amber-600">
+            No questions waiting for review. New questions from attendees will appear here for your approval.
+          </div>
+        )}
+        {pendingReviewQuestions.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-2">
+              Pending Review
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                {pendingReviewQuestions.length}
+              </span>
+            </h2>
+            <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+              {pendingReviewQuestions.map((q) => (
+                <div key={q.id} className="px-5 py-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm text-gray-800">{q.text}</p>
+                    <p className="text-xs text-gray-400">
+                      {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button
+                      onClick={() => approveQuestion(q.id)}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => dismissQuestion(q.id)}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-gray-400 font-mono">{attendeeUrl}</p>
+          </section>
+        )}
+
+        {/* Empty state — onboarding guide */}
+        {totalQuestions === 0 && pendingReviewQuestions.length === 0 && (
+          <div className="py-12 space-y-8">
+            <div className="text-center space-y-2">
+              <p className="text-3xl font-semibold text-gray-900">Your session is live</p>
+              <p className="text-gray-500">Share the code below so attendees can start asking questions.</p>
+            </div>
+
+            <div className="max-w-md mx-auto bg-white border border-gray-200 rounded-2xl p-6 space-y-4 text-center">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Join Code</p>
+              <p className="font-mono text-4xl font-bold tracking-[0.3em] text-gray-900">{code}</p>
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={copyCode}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  {codeCopied ? '✓ Copied!' : 'Copy code'}
+                </button>
+                <button
+                  onClick={copyLink}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                >
+                  {copied ? '✓ Copied!' : 'Copy join link'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 font-mono">{attendeeUrl}</p>
+            </div>
+
+            <div className="max-w-lg mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center space-y-2">
+                <div className="text-2xl">1</div>
+                <p className="text-sm font-medium text-gray-700">Share the code</p>
+                <p className="text-xs text-gray-400">Attendees join at {typeof window !== 'undefined' ? window.location.origin : ''} with this code</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center space-y-2">
+                <div className="text-2xl">2</div>
+                <p className="text-sm font-medium text-gray-700">Questions cluster</p>
+                <p className="text-xs text-gray-400">AI automatically groups similar questions into topics</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center space-y-2">
+                <div className="text-2xl">3</div>
+                <p className="text-sm font-medium text-gray-700">Answer & reply</p>
+                <p className="text-xs text-gray-400">Mark clusters as answered or reply directly to questions</p>
+              </div>
+            </div>
           </div>
         )}
 

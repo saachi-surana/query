@@ -10,6 +10,7 @@ export type Session = {
   code: string
   title: string
   description: string | null
+  moderation_enabled: boolean
   created_at: string
 }
 
@@ -21,6 +22,7 @@ export type Question = {
   is_anonymous: boolean
   cluster_id: string | null
   status: 'pending' | 'answered'
+  approved: boolean
   upvotes: number
   created_at: string
 }

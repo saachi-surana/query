@@ -29,7 +29,9 @@ npm install
 
 This creates the `sessions`, `questions`, `clusters`, and `replies` tables and enables real-time.
 
-> **Upgrading?** If you already have the database set up from an earlier version, run `supabase-add-replies.sql` in the SQL Editor to add the `replies` table.
+> **Upgrading?** If you already have the database set up from an earlier version, run these migrations in order in the SQL Editor:
+> 1. `supabase-add-replies.sql` — adds the `replies` table
+> 2. `supabase-add-moderation.sql` — adds moderation support
 
 ### 3. Add environment variables
 
@@ -81,6 +83,9 @@ Open [http://localhost:3000](http://localhost:3000).
 5. Mark individual questions or entire clusters as answered (or unmark them)
 6. Reply to questions directly — responses are tagged as "Host"
 7. View answered questions in a collapsible section with cluster subtabs
+8. Toggle moderation to approve/dismiss questions before they appear
+9. Export all session data as CSV
+10. Open `/present/[code]` for a projectable display view
 
 ### Clustering
 Every new question triggers a call to `/api/cluster`, which:
@@ -99,6 +104,7 @@ app/
   create/page.tsx           # Create a new session
   join/[code]/page.tsx      # Attendee view
   session/[code]/page.tsx   # Moderator dashboard
+  present/[code]/page.tsx   # Presentation display view
   api/cluster/route.ts      # Clustering API endpoint
 
 lib/
@@ -106,6 +112,7 @@ lib/
   clustering.ts             # AI clustering logic
 
 supabase-schema.sql         # Full database schema (fresh setup)
-supabase-add-replies.sql    # Migration to add replies table (existing DBs)
+supabase-add-replies.sql    # Migration: replies table
+supabase-add-moderation.sql # Migration: moderation support
 .env.local.example          # Environment variable template
 ```

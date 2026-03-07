@@ -144,6 +144,13 @@ export default function JoinPage() {
       .channel(`attendee-${session.id}`)
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${session.id}` },
+        (payload) => {
+          setSession(payload.new as Session)
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'questions', filter: `session_id=eq.${session.id}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
@@ -231,6 +238,7 @@ export default function JoinPage() {
       text,
       author_name: anonymous ? null : name.trim() || null,
       is_anonymous: anonymous,
+      approved: !session.moderation_enabled,
     }).select('id').single()
 
     if (error) {
@@ -306,7 +314,12 @@ export default function JoinPage() {
           <a href="/" className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity shrink-0">
             Query
           </a>
-          <h1 className="text-lg font-semibold text-gray-800 truncate">{session.title}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold text-gray-800 truncate">{session.title}</h1>
+            {session.description && (
+              <p className="text-xs text-gray-500 truncate">{session.description}</p>
+            )}
+          </div>
         </div>
       </header>
 
@@ -336,10 +349,20 @@ export default function JoinPage() {
         {tab === 'ask' && (
           <div className="space-y-4">
             {submitSuccess || upvoted ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center space-y-3">
-                <div className="text-3xl">✓</div>
-                <p className="font-medium text-green-800">
-                  {upvoted ? 'Thanks! Your upvote has been counted.' : 'Your question has been submitted!'}
+              <div className={`rounded-xl border p-6 text-center space-y-3 ${
+                session.moderation_enabled && !upvoted
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-green-200 bg-green-50'
+              }`}>
+                <div className="text-3xl">{session.moderation_enabled && !upvoted ? '⏳' : '✓'}</div>
+                <p className={`font-medium ${
+                  session.moderation_enabled && !upvoted ? 'text-amber-800' : 'text-green-800'
+                }`}>
+                  {upvoted
+                    ? 'Thanks! Your upvote has been counted.'
+                    : session.moderation_enabled
+                      ? 'Your question has been submitted and is pending moderator review.'
+                      : 'Your question has been submitted!'}
                 </p>
                 <button
                   onClick={resetForm}
@@ -452,7 +475,7 @@ export default function JoinPage() {
                 <p className="text-sm mt-1">Be the first to ask!</p>
               </div>
             ) : (
-              [...questions].sort((a, b) => b.upvotes - a.upvotes).map((q) => {
+              [...questions].filter((q) => q.approved).sort((a, b) => b.upvotes - a.upvotes).map((q) => {
                 const qReplies = replies.filter((r) => r.question_id === q.id)
                 return (
                   <div key={q.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
@@ -513,8 +536,14 @@ export default function JoinPage() {
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .map((q) => {
                   const qReplies = replies.filter((r) => r.question_id === q.id)
+                  const statusLabel = !q.approved ? 'Pending Review' : q.status === 'answered' ? 'Answered' : 'Pending'
+                  const statusClasses = !q.approved
+                    ? 'bg-amber-100 text-amber-700'
+                    : q.status === 'answered'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-500'
                   return (
-                    <div key={q.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
+                    <div key={q.id} className={`bg-white rounded-xl border p-4 flex items-start gap-3 ${!q.approved ? 'border-amber-200' : 'border-gray-200'}`}>
                       <div className="shrink-0 flex flex-col items-center px-2 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500">
                         <span>▲</span>
                         <span>{q.upvotes}</span>
@@ -526,17 +555,15 @@ export default function JoinPage() {
                             <span className="text-xs text-gray-400">
                               {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
                             </span>
-                            <span className="text-xs text-gray-300">·</span>
-                            <ReplyThread replies={qReplies} onReply={(text) => handleReply(q.id, text)} />
+                            {q.approved && (
+                              <>
+                                <span className="text-xs text-gray-300">·</span>
+                                <ReplyThread replies={qReplies} onReply={(text) => handleReply(q.id, text)} />
+                              </>
+                            )}
                           </div>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              q.status === 'answered'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}
-                          >
-                            {q.status === 'answered' ? 'Answered' : 'Pending'}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusClasses}`}>
+                            {statusLabel}
                           </span>
                         </div>
                       </div>

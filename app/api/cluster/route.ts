@@ -10,15 +10,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing params' }, { status: 400 })
     }
 
-    // Fetch question text
+    // Fetch question text and approval status
     const { data: question, error: qErr } = await supabase
       .from('questions')
-      .select('text')
+      .select('text, approved')
       .eq('id', questionId)
       .single()
 
     if (qErr || !question) {
       return NextResponse.json({ success: false, error: 'Question not found' }, { status: 404 })
+    }
+
+    // Skip clustering for unapproved questions (moderation is on)
+    if (!question.approved) {
+      return NextResponse.json({ success: true, skipped: 'awaiting_approval' })
     }
 
     // Fetch existing unanswered clusters for this session

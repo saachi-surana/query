@@ -7,6 +7,7 @@ create table if not exists sessions (
   code text unique not null,
   title text not null,
   description text,
+  moderation_enabled boolean not null default false,
   created_at timestamp with time zone default now()
 );
 
@@ -30,6 +31,7 @@ create table if not exists questions (
   is_anonymous boolean not null default false,
   cluster_id uuid references clusters(id) on delete set null,
   status text not null default 'pending',
+  approved boolean not null default true,
   upvotes integer not null default 0,
   created_at timestamp with time zone default now(),
   constraint questions_status_check check (status in ('pending', 'answered')),
@@ -53,6 +55,7 @@ create index if not exists questions_session_id_idx on questions(session_id);
 create index if not exists questions_cluster_id_idx on questions(cluster_id);
 create index if not exists clusters_session_id_idx on clusters(session_id);
 create index if not exists sessions_code_idx on sessions(code);
+create index if not exists questions_approved_idx on questions(approved);
 create index if not exists replies_question_id_idx on replies(question_id);
 create index if not exists replies_session_id_idx on replies(session_id);
 
@@ -72,6 +75,7 @@ create policy "Allow all on clusters" on clusters for all using (true) with chec
 create policy "Allow all on replies" on replies for all using (true) with check (true);
 
 -- Enable Realtime
+alter publication supabase_realtime add table sessions;
 alter publication supabase_realtime add table questions;
 alter publication supabase_realtime add table clusters;
 alter publication supabase_realtime add table replies;

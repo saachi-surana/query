@@ -43,6 +43,9 @@ export default function HomePage() {
         <div className="text-center space-y-3">
           <h1 className="text-6xl font-bold tracking-tight text-gray-900">Query</h1>
           <p className="text-lg text-gray-500">Smarter Q&amp;A for live events</p>
+          <p className="text-sm text-gray-400 max-w-xs mx-auto">
+            AI-powered question clustering. Your audience asks, we organize, you answer what matters most.
+          </p>
         </div>
 
         {/* Error banner */}
@@ -57,7 +60,7 @@ export default function HomePage() {
           {/* Host */}
           <div className="rounded-xl border border-gray-200 p-6 space-y-3">
             <h2 className="font-semibold text-gray-900">Host a Session</h2>
-            <p className="text-sm text-gray-500">Create a new Q&amp;A session and get a join code.</p>
+            <p className="text-sm text-gray-500">Create a live Q&amp;A with AI topic clustering. Free, no account needed.</p>
             <button
               onClick={() => router.push('/create')}
               className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -95,9 +98,25 @@ export default function HomePage() {
                 disabled={joining}
                 className="px-4 py-2.5 bg-gray-900 text-white rounded-lg font-medium text-sm hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {joining ? 'Joining…' : 'Join'}
+                {joining ? 'Joining...' : 'Join'}
               </button>
             </form>
+          </div>
+        </div>
+
+        {/* Feature highlights */}
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="space-y-1">
+            <p className="text-lg font-semibold text-gray-900">AI Clustering</p>
+            <p className="text-xs text-gray-400">Similar questions grouped automatically</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-semibold text-gray-900">Real-time</p>
+            <p className="text-xs text-gray-400">Questions and upvotes update live</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-semibold text-gray-900">Free</p>
+            <p className="text-xs text-gray-400">No account, no paywall, no limits</p>
           </div>
         </div>
       </div>
