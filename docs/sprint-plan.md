@@ -563,6 +563,143 @@ supabase-migrations.sql             # Add recurrence columns
 
 ---
 
+---
+
+## Sprint 5: Global Analytics Dashboard
+
+**Goal**: Build a comprehensive analytics page accessible from the sidebar that shows cross-session insights, per-session deep metrics, and engagement data that no competitor offers.
+
+### Research Summary
+
+**What Slido offers** (baseline we must match):
+- Engagement score (sum of questions + upvotes + poll votes)
+- Q&A sentiment analysis (positive / negative / neutral)
+- Word cloud of most popular topics
+- Participation count (engaged vs total)
+- Q&A metrics: total questions, anonymous %, highlighted count, answered count, upvotes
+- Organization-level analytics across multiple sessions
+- Export to Google Sheets, Excel, PDF
+
+**What the industry tracks** (standard event KPIs):
+- Engagement rate = (participants who interacted / total attendees) x 100 (industry avg: 30-60%)
+- Response rate per poll/Q&A
+- Session drop-off / attendance over time
+- Questions per minute (engagement velocity)
+- Unanswered question ratio
+- Average upvotes per question
+
+**What nobody offers** (our differentiators):
+- AI-generated topic trends across sessions ("Compensation questions increased 40% over 3 sessions")
+- Cluster health metrics (how many questions per cluster, cluster fragmentation)
+- Question complexity scoring (simple factual vs deep discussion)
+- Recurring session comparison (engagement trending up/down week over week)
+- Response time analytics (how long until a question gets answered)
+- "Engagement gap" detection (topics with high upvotes but no host reply)
+- Attendee return rate across recurring sessions
+
+---
+
+### 5.1 Analytics Page (`/analytics`)
+**Priority**: High — the main deliverable
+
+**What it is**: A dedicated analytics page accessible from the sidebar. Shows cross-session data and allows drilling into individual sessions.
+
+**Route**: `app/analytics/page.tsx`
+
+**Page sections**:
+
+#### A. Global Overview Cards (top row)
+- Total sessions hosted (all time)
+- Total questions received
+- Total upvotes
+- Overall answer rate (%)
+- Average engagement score per session
+
+#### B. Session Comparison Table
+- Sortable table of all sessions
+- Columns: Title, Date, Questions, Upvotes, Answered %, Engagement Score, Status
+- Click a row to see per-session detail
+- Color-coded: green (>75% answered), yellow (50-75%), red (<50%)
+
+#### C. Engagement Over Time Chart
+- Simple bar chart showing questions per session over time
+- Uses CSS/Tailwind only (no chart library) — horizontal bars with proportional widths
+- Shows trend: improving / declining engagement
+
+#### D. Topic Word Cloud
+- Aggregate cluster titles across all sessions
+- Larger text = more frequent topic
+- Pure CSS implementation (randomized sizing based on frequency)
+
+#### E. Unanswered Question Report
+- List of sessions with unanswered questions
+- For each: session title, unanswered count, top unanswered questions by upvotes
+- "View Full Report" links to `/report/[code]`
+
+#### F. AI Insights (if API key available)
+- AI-generated summary of trends across sessions
+- "Your audiences frequently ask about X, Y, Z"
+- "Engagement has been trending [up/down] over the last N sessions"
+- Generated on-demand via button click (not automatic, to save API credits)
+
+**Estimated complexity**: High
+
+---
+
+### 5.2 Per-Session Analytics Expansion
+**Priority**: Medium — enhance existing per-session analytics section
+
+**What it adds** to the existing collapsible analytics section on the moderator page:
+
+- **Engagement Score**: questions + upvotes (like Slido)
+- **Answer Rate**: % of questions answered with color indicator
+- **Sentiment Indicator**: Simple positive/neutral/negative based on question text analysis (can be basic keyword matching, no AI needed)
+- **Questions Over Time**: Mini timeline showing when questions came in (grouped by 5-min intervals)
+- **Response Time**: Average time between question submission and host reply
+- **Engagement Gap**: Clusters with high upvotes but no host replies yet
+- **Top Contributors**: Most active question askers (by name, where not anonymous)
+
+**Estimated complexity**: Medium
+
+---
+
+### 5.3 Sidebar Analytics Link
+**Priority**: Low — just adding a link
+
+**What it is**: Add "Analytics" as a clickable item in the left sidebar (currently it's missing). Links to `/analytics`.
+
+**Estimated complexity**: Very Low
+
+---
+
+### Sprint 5 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Sidebar analytics link | 15 min | Quick, opens up navigation |
+| 2 | Analytics page — global overview + session table | 3-4 hrs | Core deliverable |
+| 3 | Analytics page — word cloud + unanswered report | 2-3 hrs | Key differentiators |
+| 4 | Analytics page — AI insights | 1-2 hrs | Nice-to-have, reuses suggest-answer pattern |
+| 5 | Per-session analytics expansion | 2-3 hrs | Enhances existing section |
+
+**Total Sprint 5 estimate**: ~9-12 hrs of implementation
+
+---
+
+### Sprint 5 Files
+
+**New files**:
+```
+app/analytics/page.tsx              # Global analytics dashboard
+```
+
+**Modified files**:
+```
+app/session/[code]/page.tsx         # Sidebar link + per-session analytics expansion
+```
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)
