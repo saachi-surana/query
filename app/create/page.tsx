@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getUser } from '@/lib/auth'
 
 function generateCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -42,6 +43,13 @@ export default function CreatePage() {
   const [customDateInput, setCustomDateInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    getUser().then((user) => {
+      if (user) setUserId(user.id)
+    })
+  }, [])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -71,6 +79,7 @@ export default function CreatePage() {
           recurrence_dates: recurrence !== 'none'
             ? generateRecurringDates(startsAt, recurrence, customDates)
             : null,
+          ...(userId ? { user_id: userId } : {}),
         })
         .select('id, code')
         .single()
@@ -107,6 +116,7 @@ export default function CreatePage() {
           auto_suggest: autoSuggest,
           recurrence_type: recurrence,
           recurrence_parent_id: parentId,
+          ...(userId ? { user_id: userId } : {}),
         })
       }
     }
