@@ -15,6 +15,7 @@ export function PollCreate({
 }) {
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(['', ''])
+  const [allowMultiple, setAllowMultiple] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -61,6 +62,7 @@ export function PollCreate({
       question: trimmedQuestion,
       options: trimmedOptions,
       votes,
+      allow_multiple: allowMultiple,
       is_active: true,
     })
 
@@ -72,6 +74,7 @@ export function PollCreate({
 
     setQuestion('')
     setOptions(['', ''])
+    setAllowMultiple(false)
     setSubmitting(false)
     onCreated()
   }
@@ -126,6 +129,19 @@ export function PollCreate({
             + Add option
           </button>
         )}
+      </div>
+
+      <div
+        onClick={() => setAllowMultiple((prev) => !prev)}
+        className="flex items-center justify-between cursor-pointer bg-slate-50 rounded-xl border border-slate-100 px-4 py-3 hover:border-slate-200 transition-colors"
+      >
+        <div>
+          <p className="text-sm font-medium text-slate-700">Allow multiple selections</p>
+          <p className="text-xs text-slate-400 mt-0.5">Attendees can pick more than one option.</p>
+        </div>
+        <div className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ml-3 ${allowMultiple ? 'bg-theme-primary' : 'bg-slate-300'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${allowMultiple ? 'translate-x-5' : ''}`} />
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

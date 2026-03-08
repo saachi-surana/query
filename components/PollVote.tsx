@@ -25,9 +25,11 @@ export function PollVote({
   poll: Poll
   onVoted: () => void
 }) {
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [hasVoted, setHasVoted] = useState(() => getVotedPolls().has(poll.id))
+
+  const isMultiple = poll.allow_multiple
 
   if (hasVoted) {
     return (
@@ -37,14 +39,30 @@ export function PollVote({
     )
   }
 
+  function toggleOption(index: number) {
+    if (isMultiple) {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        if (next.has(index)) next.delete(index)
+        else next.add(index)
+        return next
+      })
+    } else {
+      setSelected(new Set([index]))
+    }
+  }
+
   async function handleVote(e: React.FormEvent) {
     e.preventDefault()
-    if (selected === null) return
+    if (selected.size === 0) return
 
     setSubmitting(true)
 
-    const key = String(selected)
-    const updatedVotes = { ...poll.votes, [key]: (poll.votes[key] || 0) + 1 }
+    const updatedVotes = { ...poll.votes }
+    selected.forEach((index) => {
+      const key = String(index)
+      updatedVotes[key] = (updatedVotes[key] || 0) + 1
+    })
 
     await supabase
       .from('polls')
@@ -59,23 +77,30 @@ export function PollVote({
 
   return (
     <form onSubmit={handleVote} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-      <h4 className="text-sm font-semibold text-slate-900">{poll.question}</h4>
+      <div className="flex items-center gap-2">
+        <h4 className="text-sm font-semibold text-slate-900">{poll.question}</h4>
+        {isMultiple && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-theme-primary-light text-theme-primary">
+            Select multiple
+          </span>
+        )}
+      </div>
       <div className="space-y-2">
         {poll.options.map((option, index) => (
           <label
             key={index}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
-              selected === index
+              selected.has(index)
                 ? 'border-theme-primary bg-theme-primary-subtle'
                 : 'border-slate-200 hover:border-slate-300 bg-white'
             }`}
           >
             <input
-              type="radio"
+              type={isMultiple ? 'checkbox' : 'radio'}
               name={`poll-${poll.id}`}
               value={index}
-              checked={selected === index}
-              onChange={() => setSelected(index)}
+              checked={selected.has(index)}
+              onChange={() => toggleOption(index)}
               className="accent-theme-primary"
             />
             <span className="text-sm text-slate-700">{option}</span>
@@ -84,7 +109,7 @@ export function PollVote({
       </div>
       <button
         type="submit"
-        disabled={submitting || selected === null}
+        disabled={submitting || selected.size === 0}
         className="w-full py-2.5 px-4 bg-theme-primary text-white rounded-lg font-medium text-sm hover:bg-theme-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
         {submitting && (

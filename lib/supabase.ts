@@ -73,6 +73,7 @@ export type Poll = {
   question: string
   options: string[]
   votes: Record<string, number>
+  allow_multiple: boolean
   is_active: boolean
   created_at: string
 }
