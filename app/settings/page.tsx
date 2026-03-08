@@ -168,10 +168,10 @@ export default function SettingsPage() {
     )
   }
 
-  const themeOptions: { name: ThemeName; color: string; label: string }[] = [
-    { name: 'orange', color: '#F97316', label: 'Orange' },
-    { name: 'purple', color: '#8B5CF6', label: 'Purple' },
-    { name: 'blue', color: '#3B82F6', label: 'Blue' },
+  const themeOptions: { name: ThemeName; color: string; label: string; isDefault: boolean }[] = [
+    { name: 'orange', color: '#F97316', label: 'Orange', isDefault: true },
+    { name: 'purple', color: '#8B5CF6', label: 'Purple', isDefault: false },
+    { name: 'blue', color: '#3B82F6', label: 'Blue', isDefault: false },
   ]
 
   return (
@@ -258,12 +258,12 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-slate-900">Appearance</h2>
               <p className="text-sm text-slate-500">Choose a theme color for the interface.</p>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-6">
                 {themeOptions.map((opt) => (
                   <button
                     key={opt.name}
                     onClick={() => handleThemeChange(opt.name)}
-                    className="flex flex-col items-center gap-2 group"
+                    className="flex flex-col items-center gap-2 group w-16"
                     title={opt.label}
                   >
                     <div
@@ -279,11 +279,16 @@ export default function SettingsPage() {
                           : undefined,
                       }}
                     />
-                    <span className={`text-xs font-medium ${
-                      activeTheme === opt.name ? 'text-slate-900' : 'text-slate-400'
-                    }`}>
-                      {opt.label}
-                    </span>
+                    <div className="flex flex-col items-center">
+                      <span className={`text-xs font-medium ${
+                        activeTheme === opt.name ? 'text-slate-900' : 'text-slate-400'
+                      }`}>
+                        {opt.label}
+                      </span>
+                      {opt.isDefault && (
+                        <span className="text-[10px] text-slate-400">Default</span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>

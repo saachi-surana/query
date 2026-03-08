@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeLoader } from '@/components/ThemeLoader'
 
 export const metadata: Metadata = {
   title: 'Query — Smarter Q&A for live events',
@@ -20,6 +21,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="antialiased bg-white text-slate-900 min-h-screen">
+        <ThemeLoader />
         {children}
       </body>
     </html>

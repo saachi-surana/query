@@ -174,7 +174,6 @@ export function Sidebar({
             >
               Analytics
             </a>
-            <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Profile (coming soon)</div>
             <a
               href="/settings"
               className={`block px-3 py-2.5 rounded-lg text-[0.9375rem] font-medium transition-colors ${
