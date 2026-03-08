@@ -42,12 +42,12 @@ cp .env.local.example .env.local
 Then open `.env.local` and fill in your values:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://<Project ID>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ANTHROPIC_API_KEY=sk-ant-your-key
 ```
 
-- **Supabase URL & anon key**: URL found in your Supabase project under **Settings → General** 
+- **Supabase URL & anon key**: URL found in your Supabase project under **Settings → General → Project ID** 
 - **Anon key**: Key found under **Settings → API Keys → Publishable Key**.
 - **Anthropic API key**: get one at [console.anthropic.com](https://console.anthropic.com).
 
