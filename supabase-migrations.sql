@@ -122,6 +122,67 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================
+-- WORD CLOUDS (Sprint 9.3)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS word_clouds (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES sessions(id) ON DELETE CASCADE NOT NULL,
+  prompt text NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS word_clouds_session_id_idx ON word_clouds(session_id);
+
+ALTER TABLE word_clouds ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on word_clouds') THEN
+    CREATE POLICY "Allow all on word_clouds" ON word_clouds FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS word_cloud_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  word_cloud_id uuid REFERENCES word_clouds(id) ON DELETE CASCADE NOT NULL,
+  word text NOT NULL,
+  device_id text,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS word_cloud_entries_word_cloud_id_idx ON word_cloud_entries(word_cloud_id);
+
+ALTER TABLE word_cloud_entries ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on word_cloud_entries') THEN
+    CREATE POLICY "Allow all on word_cloud_entries" ON word_cloud_entries FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- ============================================================
+-- POLLS (Sprint 9.2)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS polls (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES sessions(id) ON DELETE CASCADE NOT NULL,
+  question text NOT NULL,
+  options jsonb NOT NULL DEFAULT '[]',
+  votes jsonb NOT NULL DEFAULT '{}',
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS polls_session_id_idx ON polls(session_id);
+
+ALTER TABLE polls ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on polls') THEN
+    CREATE POLICY "Allow all on polls" ON polls FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- ============================================================
 -- REALTIME
 -- ============================================================
 
@@ -135,3 +196,28 @@ do $$ begin
   alter publication supabase_realtime add table replies;
 exception when others then null;
 end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table word_clouds;
+exception when others then null;
+end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table word_cloud_entries;
+exception when others then null;
+end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table polls;
+exception when others then null;
+end $$;
+
+-- ============================================================
+-- CUSTOM HOST BRANDING (Sprint 9.5)
+-- ============================================================
+
+-- Logo URL (public Supabase Storage URL) and brand color (hex string)
+-- NOTE: You must also create a Supabase Storage bucket named "logos"
+--       with public access in your Supabase dashboard.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS logo_url text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS brand_color text;

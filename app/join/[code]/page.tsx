@@ -2,8 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Reply, Cluster, ClusterWithQuestions } from '@/lib/supabase'
+import { supabase, Session, Question, Reply, Cluster, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/device-id'
+import { PollVote } from '@/components/PollVote'
+import { PollResults } from '@/components/PollResults'
+import { WordCloudSubmit } from '@/components/WordCloudSubmit'
+import { WordCloudDisplay } from '@/components/WordCloudDisplay'
+import { BrandOverride } from '@/components/BrandOverride'
 
 const MAX_CHARS = 500
 const DEBOUNCE_MS = 400
@@ -108,6 +113,13 @@ export default function JoinPage() {
   const [myQuestionIds, setMyQuestionIds] = useState<Set<string>>(new Set())
   const deviceIdRef = useRef<string>('')
 
+  // Polls
+  const [activePoll, setActivePoll] = useState<Poll | null>(null)
+
+  // Word cloud
+  const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
+  const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
+
   // Similarity
   const [similarQuestions, setSimilarQuestions] = useState<Question[]>([])
   const debouncedText = useDebounce(questionText, DEBOUNCE_MS)
@@ -166,6 +178,37 @@ export default function JoinPage() {
       setQuestions(qs || [])
       setClusters(cs || [])
       setReplies(rs || [])
+
+      // Load active poll
+      const { data: pollData } = await supabase
+        .from('polls')
+        .select('*')
+        .eq('session_id', session!.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      setActivePoll(pollData && pollData.length > 0 ? pollData[0] : null)
+
+      // Load active word cloud
+      const { data: wc } = await supabase
+        .from('word_clouds')
+        .select('*')
+        .eq('session_id', session!.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+      if (wc) {
+        setActiveWordCloud(wc)
+        const { data: entries } = await supabase
+          .from('word_cloud_entries')
+          .select('*')
+          .eq('word_cloud_id', wc.id)
+          .order('created_at', { ascending: true })
+        setWordCloudEntries(entries || [])
+      } else {
+        setActiveWordCloud(null)
+        setWordCloudEntries([])
+      }
     }
     loadData()
 
@@ -217,14 +260,72 @@ export default function JoinPage() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'polls', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newPoll = payload.new as Poll
+            if (newPoll.is_active) setActivePoll(newPoll)
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Poll
+            setActivePoll((prev) => {
+              if (updated.is_active) return updated
+              if (prev?.id === updated.id && !updated.is_active) return null
+              return prev
+            })
+          }
+        }
+      )
       .subscribe((status) => {
         setConnected(status === 'SUBSCRIBED')
       })
 
+    // Subscribe to word cloud changes (host creating/closing)
+    const wcChannel = supabase
+      .channel(`attendee-wc-${session.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'word_clouds', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const wc = payload.new as WordCloud
+            if (wc.is_active) {
+              setActiveWordCloud(wc)
+              setWordCloudEntries([])
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const wc = payload.new as WordCloud
+            if (!wc.is_active && activeWordCloud?.id === wc.id) {
+              setActiveWordCloud(null)
+              setWordCloudEntries([])
+            } else if (wc.is_active) {
+              setActiveWordCloud(wc)
+            }
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(channel)
+      supabase.removeChannel(wcChannel)
     }
   }, [session])
+
+  // Real-time subscription for word cloud entries
+  useEffect(() => {
+    if (!activeWordCloud) return
+
+    const wcEntryChannel = supabase
+      .channel(`attendee-wc-entries-${activeWordCloud.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud_entries', filter: `word_cloud_id=eq.${activeWordCloud.id}` },
+        (payload) => {
+          setWordCloudEntries((prev) => [...prev, payload.new as WordCloudEntry])
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(wcEntryChannel) }
+  }, [activeWordCloud?.id])
 
   // Similarity search (debounced)
   useEffect(() => {
@@ -366,6 +467,9 @@ export default function JoinPage() {
 
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      {/* Brand color override */}
+      <BrandOverride brandColor={session.brand_color} />
+
       {/* Connection banner */}
       {!connected && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800 text-center shrink-0">
@@ -381,6 +485,9 @@ export default function JoinPage() {
         <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
         <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
         <div className="relative flex items-baseline gap-3">
+          {session.logo_url && (
+            <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-7 max-w-[100px]" />
+          )}
           <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity shrink-0 tracking-tight">Query</a>
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <div className="flex-1 min-w-0">
@@ -432,6 +539,18 @@ export default function JoinPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Active Poll */}
+        {activePoll && !session.ended_at && (
+          <div className="mb-6">
+            <PollVote poll={activePoll} onVoted={() => {
+              // Reload the poll to get updated votes
+              supabase.from('polls').select('*').eq('id', activePoll.id).single().then(({ data }) => {
+                if (data) setActivePoll(data)
+              })
+            }} />
+          </div>
+        )}
+
         {/* ASK TAB */}
         {tab === 'ask' && session.ended_at && (
           <div className="text-center py-16 text-slate-400">
@@ -555,6 +674,22 @@ export default function JoinPage() {
                   {submitting ? 'Submitting…' : 'Submit Question'}
                 </button>
               </form>
+            )}
+          </div>
+        )}
+
+        {/* Active Word Cloud — shown on Ask tab below the form */}
+        {tab === 'ask' && !session.ended_at && activeWordCloud && (
+          <div className="space-y-4 mt-4">
+            <WordCloudSubmit
+              wordCloud={activeWordCloud}
+              onSubmitted={() => {}}
+            />
+            {wordCloudEntries.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Live Word Cloud</p>
+                <WordCloudDisplay entries={wordCloudEntries} />
+              </div>
             )}
           </div>
         )}

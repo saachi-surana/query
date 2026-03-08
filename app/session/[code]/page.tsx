@@ -1,14 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions } from '@/lib/supabase'
+import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry } from '@/lib/supabase'
 import { ChevronIcon } from '@/components/ChevronIcon'
 import { Spinner } from '@/components/Spinner'
 import { QuestionRow } from '@/components/QuestionRow'
 import { ClusterCard } from '@/components/ClusterCard'
 import { MeshHeader } from '@/components/MeshHeader'
 import { Sidebar } from '@/components/Sidebar'
+import { PollCreate } from '@/components/PollCreate'
+import { PollResults } from '@/components/PollResults'
+import { WordCloudCreate } from '@/components/WordCloudCreate'
+import { WordCloudDisplay } from '@/components/WordCloudDisplay'
+import { BrandOverride } from '@/components/BrandOverride'
+import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react'
 
 export default function ModeratorPage() {
   const params = useParams()
@@ -32,6 +38,13 @@ export default function ModeratorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [allSessions, setAllSessions] = useState<Session[]>([])
   const [reclustering, setReclustering] = useState(false)
+  const [polls, setPolls] = useState<Poll[]>([])
+  const [pollsOpen, setPollsOpen] = useState(true)
+  const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
+  const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
+  const [wordCloudOpen, setWordCloudOpen] = useState(true)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
+  const qrCanvasRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setSidebarOpen(window.innerWidth >= 768)
@@ -73,14 +86,37 @@ export default function ModeratorPage() {
     if (!session) return
 
     async function loadData() {
-      const [{ data: qs }, { data: cs }, { data: rs }] = await Promise.all([
+      const [{ data: qs }, { data: cs }, { data: rs }, { data: ps }] = await Promise.all([
         supabase.from('questions').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
         supabase.from('clusters').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
         supabase.from('replies').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
+        supabase.from('polls').select('*').eq('session_id', session!.id).order('created_at', { ascending: false }),
       ])
       setQuestions(qs || [])
       setClusters(cs || [])
       setReplies(rs || [])
+      setPolls(ps || [])
+
+      // Load active word cloud
+      const { data: wcs } = await supabase
+        .from('word_clouds')
+        .select('*')
+        .eq('session_id', session!.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+      if (wcs) {
+        setActiveWordCloud(wcs)
+        const { data: entries } = await supabase
+          .from('word_cloud_entries')
+          .select('*')
+          .eq('word_cloud_id', wcs.id)
+          .order('created_at', { ascending: true })
+        setWordCloudEntries(entries || [])
+      } else {
+        setActiveWordCloud(null)
+        setWordCloudEntries([])
+      }
     }
     loadData()
 
@@ -129,12 +165,71 @@ export default function ModeratorPage() {
           }
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setPolls((prev) => [payload.new as Poll, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            setPolls((prev) =>
+              prev.map((p) => (p.id === (payload.new as Poll).id ? (payload.new as Poll) : p))
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setPolls((prev) => prev.filter((p) => p.id !== payload.old.id))
+          }
+        }
+      )
       .subscribe((status) => {
         setConnected(status === 'SUBSCRIBED')
       })
 
     return () => { supabase.removeChannel(channel) }
   }, [session])
+
+  // Real-time subscription for word cloud entries
+  useEffect(() => {
+    if (!activeWordCloud) return
+
+    const wcChannel = supabase
+      .channel(`wc-entries-${activeWordCloud.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud_entries', filter: `word_cloud_id=eq.${activeWordCloud.id}` },
+        (payload) => {
+          setWordCloudEntries((prev) => [...prev, payload.new as WordCloudEntry])
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(wcChannel) }
+  }, [activeWordCloud?.id])
+
+  async function loadActiveWordCloud() {
+    if (!session) return
+    const { data: wcs } = await supabase
+      .from('word_clouds')
+      .select('*')
+      .eq('session_id', session.id)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+    if (wcs) {
+      setActiveWordCloud(wcs)
+      const { data: entries } = await supabase
+        .from('word_cloud_entries')
+        .select('*')
+        .eq('word_cloud_id', wcs.id)
+        .order('created_at', { ascending: true })
+      setWordCloudEntries(entries || [])
+    } else {
+      setActiveWordCloud(null)
+      setWordCloudEntries([])
+    }
+  }
+
+  async function closeWordCloud() {
+    if (!activeWordCloud) return
+    await supabase.from('word_clouds').update({ is_active: false }).eq('id', activeWordCloud.id)
+    setActiveWordCloud(null)
+    setWordCloudEntries([])
+  }
 
   async function toggleModeration() {
     if (!session) return
@@ -236,6 +331,19 @@ export default function ModeratorPage() {
     setSession({ ...session, highlighted_cluster_id: clusterId })
   }
 
+  async function togglePollActive(pollId: string, currentlyActive: boolean) {
+    await supabase.from('polls').update({ is_active: !currentlyActive }).eq('id', pollId)
+    setPolls((prev) =>
+      prev.map((p) => (p.id === pollId ? { ...p, is_active: !currentlyActive } : p))
+    )
+  }
+
+  async function loadPolls() {
+    if (!session) return
+    const { data } = await supabase.from('polls').select('*').eq('session_id', session.id).order('created_at', { ascending: false })
+    setPolls(data || [])
+  }
+
   async function endSession() {
     if (!session) return
     const now = new Date().toISOString()
@@ -307,6 +415,17 @@ export default function ModeratorPage() {
     })
   }
 
+  const downloadQr = useCallback(() => {
+    if (!qrCanvasRef.current) return
+    const canvas = qrCanvasRef.current.querySelector('canvas')
+    if (!canvas) return
+    const url = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `query-${code}-qr.png`
+    a.click()
+  }, [code])
+
   // Separate approved questions from pending review
   const approvedQuestions = questions.filter((q) => q.approved)
   const pendingReviewQuestions = questions.filter((q) => !q.approved)
@@ -360,6 +479,9 @@ export default function ModeratorPage() {
 
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      {/* Brand color override */}
+      <BrandOverride brandColor={session.brand_color} />
+
       {/* Connection banner */}
       {!connected && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-800 text-center">
@@ -401,6 +523,9 @@ export default function ModeratorPage() {
           <button onClick={() => setSidebarOpen((o) => !o)} className="self-center shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <svg className="w-5 h-5 text-theme-primary-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
+          {session.logo_url && (
+            <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-7 max-w-[100px]" />
+          )}
           <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity shrink-0 tracking-tight">Query</a>
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <div className="flex-1 min-w-0">
@@ -420,6 +545,15 @@ export default function ModeratorPage() {
               ) : (
                 <svg className="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
               )}
+            </button>
+            {/* QR code button */}
+            <button
+              onClick={() => setQrModalOpen(true)}
+              title="Show QR code"
+              className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm3 3h3v3h-3v-3z" /></svg>
             </button>
             {/* Present mode */}
             <a
@@ -558,6 +692,12 @@ export default function ModeratorPage() {
             <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl p-6 space-y-4 text-center">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Join Code</p>
               <p className="font-mono text-4xl font-bold tracking-[0.3em] text-slate-900">{code}</p>
+              <div className="flex justify-center">
+                <div className="rounded-xl border-2 p-3" style={{ borderColor: 'var(--theme-primary-light)' }}>
+                  <QRCodeSVG value={attendeeUrl} size={160} level="M" />
+                </div>
+              </div>
+              <p className="text-sm text-slate-500">Share this QR code with your audience</p>
               <div className="flex justify-center gap-3">
                 <button
                   onClick={copyCode}
@@ -769,6 +909,64 @@ export default function ModeratorPage() {
           </section>
         )}
 
+        {/* Word Cloud */}
+        <section className="space-y-3">
+          <button
+            onClick={() => setWordCloudOpen((o) => !o)}
+            className="flex items-center gap-2 group"
+          >
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">
+              Word Cloud
+            </h2>
+            {activeWordCloud && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                Active
+              </span>
+            )}
+            <ChevronIcon open={wordCloudOpen} />
+          </button>
+          {wordCloudOpen && (
+            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+              {activeWordCloud ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-900">{activeWordCloud.prompt}</p>
+                    <button
+                      onClick={closeWordCloud}
+                      className="px-3 py-1 rounded-lg text-xs font-medium bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors"
+                    >
+                      Close Word Cloud
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">{wordCloudEntries.length} submission{wordCloudEntries.length !== 1 ? 's' : ''}</p>
+                  <WordCloudDisplay entries={wordCloudEntries} />
+                </>
+              ) : (
+                <WordCloudCreate sessionId={session.id} onCreated={loadActiveWordCloud} />
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Polls */}
+        <section className="space-y-3">
+          <button onClick={() => setPollsOpen((o) => !o)} className="flex items-center gap-2 group">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">Polls</h2>
+            {polls.length > 0 && (<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-theme-primary-light text-theme-primary-hover">{polls.length}</span>)}
+            <ChevronIcon open={pollsOpen} />
+          </button>
+          {pollsOpen && (<div className="space-y-4">
+            <PollCreate sessionId={session.id} onCreated={loadPolls} />
+            {polls.map((poll) => (<div key={poll.id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+              <PollResults poll={poll} />
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <button onClick={() => togglePollActive(poll.id, poll.is_active)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${poll.is_active ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>{poll.is_active ? 'Close Poll' : 'Reopen Poll'}</button>
+                <span className={`text-xs ${poll.is_active ? 'text-emerald-500' : 'text-slate-400'}`}>{poll.is_active ? 'Active' : 'Closed'}</span>
+              </div>
+            </div>))}
+          </div>)}
+        </section>
+
         {/* Analytics */}
         {totalQuestions > 0 && (
           <section className="space-y-3">
@@ -963,6 +1161,45 @@ export default function ModeratorPage() {
           </svg>
         </button>
       </div>
+
+      {/* QR Code Modal */}
+      {qrModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setQrModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 space-y-5 text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Scan to join</h3>
+              <button onClick={() => setQrModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors text-xl leading-none">&times;</button>
+            </div>
+            <div className="flex justify-center">
+              <div className="rounded-xl border-2 p-4" style={{ borderColor: 'var(--theme-primary-light)' }}>
+                <QRCodeSVG value={attendeeUrl} size={200} level="M" />
+              </div>
+            </div>
+            <div>
+              <p className="font-mono text-3xl font-bold tracking-[0.2em] text-slate-900">{code}</p>
+              <p className="text-xs text-slate-400 font-mono mt-1">{attendeeUrl}</p>
+            </div>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={copyLink}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:border-theme-primary-light hover:text-theme-primary hover:bg-theme-primary-subtle transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy link'}
+              </button>
+              <button
+                onClick={downloadQr}
+                className="px-4 py-2 rounded-lg bg-theme-primary text-sm font-medium text-white hover:bg-theme-primary-hover transition-colors"
+              >
+                Download PNG
+              </button>
+            </div>
+            {/* Hidden canvas for PNG download */}
+            <div ref={qrCanvasRef} className="hidden">
+              <QRCodeCanvas value={attendeeUrl} size={400} level="M" />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

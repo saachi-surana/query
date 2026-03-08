@@ -18,6 +18,8 @@ export type Session = {
   recurrence_type: string | null
   recurrence_parent_id: string | null
   recurrence_dates: string[] | null
+  logo_url: string | null
+  brand_color: string | null
   user_id?: string
   created_at: string
 }
@@ -62,6 +64,32 @@ export type Reply = {
   text: string
   author_name: string | null
   is_host: boolean
+  created_at: string
+}
+
+export type Poll = {
+  id: string
+  session_id: string
+  question: string
+  options: string[]
+  votes: Record<string, number>
+  is_active: boolean
+  created_at: string
+}
+
+export type WordCloud = {
+  id: string
+  session_id: string
+  prompt: string
+  is_active: boolean
+  created_at: string
+}
+
+export type WordCloudEntry = {
+  id: string
+  word_cloud_id: string
+  word: string
+  device_id: string | null
   created_at: string
 }
 

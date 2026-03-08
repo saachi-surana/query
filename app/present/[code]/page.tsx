@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions } from '@/lib/supabase'
+import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry } from '@/lib/supabase'
 import { MeshHeader } from '@/components/MeshHeader'
+import { PollResults } from '@/components/PollResults'
+import { WordCloudDisplay } from '@/components/WordCloudDisplay'
+import { BrandOverride } from '@/components/BrandOverride'
+import { QRCodeSVG } from 'qrcode.react'
 
 function PresentQuestionCard({ question, replies }: { question: Question; replies: Reply[] }) {
   const [showReplies, setShowReplies] = useState(false)
@@ -60,6 +64,9 @@ export default function PresentPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
+  const [activePoll, setActivePoll] = useState<Poll | null>(null)
+  const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
+  const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
 
   const joinUrl =
     typeof window !== 'undefined'
@@ -87,6 +94,37 @@ export default function PresentPage() {
       setQuestions(qs || [])
       setClusters(cs || [])
       setReplies(rs || [])
+
+      // Load active poll
+      const { data: pollData } = await supabase
+        .from('polls')
+        .select('*')
+        .eq('session_id', session!.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      setActivePoll(pollData && pollData.length > 0 ? pollData[0] : null)
+
+      // Load active word cloud
+      const { data: wc } = await supabase
+        .from('word_clouds')
+        .select('*')
+        .eq('session_id', session!.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+      if (wc) {
+        setActiveWordCloud(wc)
+        const { data: entries } = await supabase
+          .from('word_cloud_entries')
+          .select('*')
+          .eq('word_cloud_id', wc.id)
+          .order('created_at', { ascending: true })
+        setWordCloudEntries(entries || [])
+      } else {
+        setActiveWordCloud(null)
+        setWordCloudEntries([])
+      }
     }
     loadData()
 
@@ -128,12 +166,70 @@ export default function PresentPage() {
           }
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newPoll = payload.new as Poll
+            if (newPoll.is_active) setActivePoll(newPoll)
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Poll
+            setActivePoll((prev) => {
+              if (updated.is_active) return updated
+              if (prev?.id === updated.id && !updated.is_active) return null
+              return prev
+            })
+          }
+        }
+      )
       .subscribe((status) => {
         setConnected(status === 'SUBSCRIBED')
       })
 
-    return () => { supabase.removeChannel(channel) }
+    // Subscribe to word cloud changes
+    const wcChannel = supabase
+      .channel(`present-wc-${session.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'word_clouds', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const wc = payload.new as WordCloud
+            if (wc.is_active) {
+              setActiveWordCloud(wc)
+              setWordCloudEntries([])
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const wc = payload.new as WordCloud
+            if (!wc.is_active) {
+              setActiveWordCloud((prev) => prev?.id === wc.id ? null : prev)
+              setWordCloudEntries((prev) => activeWordCloud?.id === wc.id ? [] : prev)
+            } else if (wc.is_active) {
+              setActiveWordCloud(wc)
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      supabase.removeChannel(wcChannel)
+    }
   }, [session])
+
+  // Real-time subscription for word cloud entries
+  useEffect(() => {
+    if (!activeWordCloud) return
+
+    const wcEntryChannel = supabase
+      .channel(`present-wc-entries-${activeWordCloud.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud_entries', filter: `word_cloud_id=eq.${activeWordCloud.id}` },
+        (payload) => {
+          setWordCloudEntries((prev) => [...prev, payload.new as WordCloudEntry])
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(wcEntryChannel) }
+  }, [activeWordCloud?.id])
 
   // Build cluster data
   const approvedQuestions = questions.filter((q) => q.approved)
@@ -177,6 +273,9 @@ export default function PresentPage() {
 
   return (
     <main className="h-screen flex flex-col bg-slate-50">
+      {/* Brand color override */}
+      <BrandOverride brandColor={session.brand_color} />
+
       {/* Connection indicator */}
       {!connected && (
         <div className="bg-amber-500 px-4 py-1 text-xs text-center text-white font-medium shrink-0">
@@ -189,6 +288,9 @@ export default function PresentPage() {
         <div className="relative flex flex-col sm:flex-row items-center sm:justify-between gap-2">
           {/* Left: branding + session title */}
           <div className="flex items-baseline gap-3 min-w-0 text-center sm:text-left">
+            {session.logo_url && (
+              <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-8 max-w-[120px]" />
+            )}
             <h1 className="text-2xl font-bold text-white shrink-0 tracking-tight">Query</h1>
             <span className="text-white/30 text-lg font-light shrink-0">/</span>
             <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
@@ -204,16 +306,57 @@ export default function PresentPage() {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        {totalQuestions === 0 ? (
+        {/* Active Poll — shown prominently */}
+        {activePoll && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="rounded-2xl border-2 p-8 transition-all" style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold text-white animate-pulse" style={{ background: 'var(--theme-primary)' }}>LIVE POLL</span>
+              </div>
+              <PollResults poll={activePoll} large />
+            </div>
+          </div>
+        )}
+
+        {/* Active Word Cloud — prominent display for projection */}
+        {activeWordCloud && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div
+              className="rounded-2xl border-2 p-8 transition-all"
+              style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}
+            >
+              <div className="text-center space-y-2 mb-4">
+                <span
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold text-white"
+                  style={{ background: 'var(--theme-primary)' }}
+                >
+                  WORD CLOUD
+                </span>
+                <p className="text-xl font-semibold text-slate-900">{activeWordCloud.prompt}</p>
+              </div>
+              <div className="animate-[fadeIn_0.5s_ease-out]">
+                <WordCloudDisplay entries={wordCloudEntries} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {totalQuestions === 0 && !activePoll && !activeWordCloud ? (
           /* Empty state */
           <div className="h-full flex flex-col items-center justify-center space-y-8">
             <div className="text-center space-y-3">
               <p className="text-4xl font-bold text-slate-700">Ask a question!</p>
               <p className="text-xl text-slate-400">Go to the link below and submit your questions</p>
             </div>
-            <div className="rounded-2xl px-10 py-6 text-center space-y-2 border-2" style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}>
+            <div className="rounded-2xl px-10 py-6 text-center space-y-4 border-2" style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}>
               <p className="text-slate-500 text-sm uppercase tracking-wider">Join Code</p>
               <p className="font-mono text-5xl font-bold tracking-[0.3em] text-slate-900">{code}</p>
+              <div className="flex justify-center">
+                <div className="rounded-xl border-2 p-3 bg-white" style={{ borderColor: 'var(--theme-primary-light)' }}>
+                  <QRCodeSVG value={joinUrl} size={180} level="M" />
+                </div>
+              </div>
+              <p className="text-slate-500 text-base font-medium">Share this QR code with your audience</p>
               <p className="text-slate-500 text-sm font-mono">{joinUrl}</p>
             </div>
           </div>
@@ -309,6 +452,14 @@ export default function PresentPage() {
             })()}
           </div>
         )}
+      </div>
+
+      {/* QR code overlay — bottom-right corner */}
+      <div className="fixed bottom-4 right-4 z-20">
+        <div className="rounded-xl border bg-white/95 backdrop-blur-sm p-2 shadow-lg" style={{ borderColor: 'var(--theme-primary-light)' }}>
+          <QRCodeSVG value={joinUrl} size={120} level="M" />
+          <p className="text-[10px] text-slate-500 text-center mt-1 font-mono">{code}</p>
+        </div>
       </div>
     </main>
   )

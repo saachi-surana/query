@@ -46,11 +46,55 @@ export default function CreatePage() {
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
 
+  // Branding state
+  const [brandColor, setBrandColor] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+
   useEffect(() => {
     getUser().then((user) => {
       if (user) setUserId(user.id)
     })
   }, [])
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo must be under 2MB.')
+      return
+    }
+    setLogoFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setLogoPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function removeLogo() {
+    setLogoFile(null)
+    setLogoPreview(null)
+  }
+
+  async function uploadLogo(): Promise<string | null> {
+    if (!logoFile) return null
+    setLogoUploading(true)
+    try {
+      const ext = logoFile.name.split('.').pop() || 'png'
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('logos')
+        .upload(fileName, logoFile, { contentType: logoFile.type })
+      if (uploadErr) {
+        console.error('Logo upload error:', uploadErr)
+        return null
+      }
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName)
+      return urlData.publicUrl
+    } finally {
+      setLogoUploading(false)
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -62,6 +106,9 @@ export default function CreatePage() {
 
     setLoading(true)
     setError('')
+
+    // Upload logo if selected
+    const uploadedLogoUrl = await uploadLogo()
 
     let parentCode: string | null = null
     let parentId: string | null = null
@@ -80,6 +127,8 @@ export default function CreatePage() {
           recurrence_dates: recurrence !== 'none'
             ? generateRecurringDates(startsAt, recurrence, customDates)
             : null,
+          logo_url: uploadedLogoUrl || null,
+          brand_color: brandColor.trim() || null,
           ...(userId ? { user_id: userId } : {}),
         })
         .select('id, code')
@@ -117,6 +166,8 @@ export default function CreatePage() {
           auto_suggest: autoSuggest,
           recurrence_type: recurrence,
           recurrence_parent_id: parentId,
+          logo_url: uploadedLogoUrl || null,
+          brand_color: brandColor.trim() || null,
           ...(userId ? { user_id: userId } : {}),
         })
       }
@@ -305,6 +356,104 @@ export default function CreatePage() {
             </div>
             <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-3 ${autoSuggest ? 'bg-theme-primary' : 'bg-slate-300'}`}>
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${autoSuggest ? 'translate-x-5' : ''}`} />
+            </div>
+          </div>
+
+          {/* Branding (Optional) */}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">
+                Branding <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <p className="text-xs text-slate-400">Add your logo and brand color. Appears on all session pages for attendees.</p>
+            </div>
+
+            {/* Logo upload */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Logo</p>
+              {logoPreview ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative rounded-xl border border-slate-200 bg-white p-3">
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="object-contain"
+                      style={{ maxHeight: '120px' }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    className="text-sm text-rose-500 hover:text-rose-700 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-full px-4 py-4 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors">
+                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <span className="text-sm text-slate-500">Upload logo (PNG, JPG, SVG &mdash; max 2MB)</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml"
+                    onChange={handleLogoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Brand color picker */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Brand Color</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { name: 'orange', hex: '#F97316' },
+                  { name: 'purple', hex: '#8B5CF6' },
+                  { name: 'blue', hex: '#3B82F6' },
+                  { name: 'green', hex: '#22C55E' },
+                  { name: 'red', hex: '#EF4444' },
+                  { name: 'teal', hex: '#14B8A6' },
+                  { name: 'pink', hex: '#EC4899' },
+                  { name: 'indigo', hex: '#6366F1' },
+                ].map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setBrandColor(brandColor === c.hex ? '' : c.hex)}
+                    className={`w-8 h-8 rounded-full transition-all ${
+                      brandColor === c.hex ? 'ring-2 ring-offset-2 ring-slate-900 scale-110' : 'hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={brandColor}
+                  onChange={(e) => setBrandColor(e.target.value)}
+                  placeholder="#hexcode"
+                  maxLength={7}
+                  className="w-32 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors font-mono"
+                />
+                {brandColor && /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(brandColor) && (
+                  <div
+                    className="w-8 h-8 rounded-lg border border-slate-200 shrink-0"
+                    style={{ backgroundColor: brandColor.startsWith('#') ? brandColor : `#${brandColor}` }}
+                  />
+                )}
+                {brandColor && (
+                  <button
+                    type="button"
+                    onClick={() => setBrandColor('')}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
