@@ -1539,6 +1539,128 @@ package.json                          # New dependencies (qrcode.react, jspdf)
 
 ---
 
+## Sprint 10: Settings Page
+
+**Status**: NOT STARTED
+
+**Goal**: Add a settings page accessible from the sidebar, with profile management, session defaults, and appearance customization.
+
+---
+
+### 10.1 Settings Page — Profile Section
+**Priority**: High
+**Estimated complexity**: Medium-High
+
+**What it is**: A dedicated settings page with profile management, password change, sign out, and account deletion.
+
+**What to do**:
+- Create `app/settings/page.tsx` with mesh header + sidebar layout
+- Profile section: display email (read-only), editable display name
+- Change password form (current password, new password, confirm with green/red match indicator)
+- Sign out button
+- Delete account (danger zone with confirmation modal)
+
+**Files to create**:
+- `app/settings/page.tsx`
+
+**Dependencies**: 7.1 (host authentication)
+
+---
+
+### 10.2 Settings Page — Session Defaults
+**Priority**: Medium
+**Estimated complexity**: Small
+
+**What it is**: User-configurable default settings for new sessions.
+
+**What to do**:
+- Default moderation on/off toggle
+- Default AI auto-suggest on/off toggle
+- These save as user preferences (could use localStorage initially, DB later)
+
+**Files to modify**:
+- `app/settings/page.tsx`
+
+**Dependencies**: 10.1 (settings page must exist)
+
+---
+
+### 10.3 Settings Page — Appearance (Theme Picker)
+**Priority**: Medium
+**Estimated complexity**: Medium
+
+**What it is**: Visual theme picker allowing hosts to choose an accent color for the entire app.
+
+**What to do**:
+- Row of color circles: Orange (current), Purple, Blue
+- Clicking one swaps the CSS variables in `globals.css` dynamically
+- Uses the existing theme system (`docs/theme-guide.md`)
+- Persist choice in localStorage
+
+**Files to modify**:
+- `app/settings/page.tsx`
+- `app/globals.css`
+
+**Dependencies**: 10.1 (settings page must exist)
+
+---
+
+### 10.4 Sidebar Settings Link
+**Priority**: High
+**Estimated complexity**: Small
+
+**What it is**: Replace the "Settings (coming soon)" placeholder in the sidebar with an actual link to the settings page.
+
+**What to do**:
+- Replace "Settings (coming soon)" placeholder in sidebar with actual link to `/settings`
+- Add settings to middleware protected routes
+
+**Files to modify**:
+- `components/Sidebar.tsx`
+- `middleware.ts`
+
+**Dependencies**: 10.1 (settings page must exist)
+
+---
+
+### Sprint 10 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Settings page — Profile section (10.1) | 3-4 hrs | Foundation — page must exist first |
+| 2 | Sidebar settings link (10.4) | 30 min | Quick win, makes settings discoverable |
+| 3 | Session defaults (10.2) | 1-2 hrs | Builds on settings page layout |
+| 4 | Appearance / theme picker (10.3) | 2-3 hrs | Most complex settings feature |
+
+**Total Sprint 10 estimate**: ~7-10 hrs of implementation
+
+---
+
+### Sprint 10 Files
+
+**New files**:
+```
+app/settings/page.tsx                # Settings page (profile, defaults, appearance)
+```
+
+**Modified files**:
+```
+components/Sidebar.tsx               # Replace "Settings (coming soon)" with link to /settings
+middleware.ts                        # Add /settings to protected routes
+app/globals.css                      # Theme picker CSS variable support
+```
+
+---
+
+### Sprint 10 Notes
+
+- The "Settings (coming soon)" placeholder in the sidebar (`components/Sidebar.tsx` line 178) will be replaced with a working link in task 10.4
+- The "Profile (coming soon)" placeholder (line 177) remains as-is — profile functionality is handled within the settings page's Profile section (10.1)
+
+---
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)
