@@ -10,7 +10,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [noAccount, setNoAccount] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const redirect = searchParams.get('redirect')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -18,19 +21,21 @@ export default function LoginPage() {
 
     setLoading(true)
     setError('')
+    setNoAccount(false)
 
     const { error: authError } = await signIn(email.trim(), password)
 
     if (authError) {
-      setError(authError.message === 'Invalid login credentials'
-        ? 'Invalid email or password. Please try again.'
-        : authError.message)
+      if (authError.message === 'Invalid login credentials') {
+        setNoAccount(true)
+      } else {
+        setError(authError.message)
+      }
       setLoading(false)
       return
     }
 
-    const redirect = searchParams.get('redirect') || '/'
-    router.push(redirect)
+    router.push(redirect || '/')
   }
 
   const inputClasses = 'w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors'
@@ -62,7 +67,17 @@ export default function LoginPage() {
             <p className="text-sm text-slate-500 mt-0.5">Welcome back to Query.</p>
           </div>
 
-          {error && (
+          {noAccount && (
+            <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+              Looks like you don&apos;t have an account yet.{' '}
+              <a href={`/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="font-semibold text-theme-primary hover:text-theme-primary-hover underline">
+                Sign up now
+              </a>{' '}
+              to get started.
+            </div>
+          )}
+
+          {error && !noAccount && (
             <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
               {error}
             </div>
@@ -114,7 +129,7 @@ export default function LoginPage() {
         {/* Sign up link */}
         <p className="text-center text-sm" style={{ color: 'var(--theme-dark-muted)' }}>
           Don&apos;t have an account?{' '}
-          <a href={`/signup${searchParams.get('redirect') ? `?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : ''}`} className="font-medium text-white underline underline-offset-2 hover:opacity-80 transition-opacity">
+          <a href={`/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="font-medium text-white underline underline-offset-2 hover:opacity-80 transition-opacity">
             Sign up
           </a>
         </p>
