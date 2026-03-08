@@ -112,7 +112,7 @@ export default function PresentPage() {
         .eq('session_id', session!.id)
         .eq('is_active', true)
         .limit(1)
-        .single()
+        .maybeSingle()
       if (wc) {
         setActiveWordCloud(wc)
         const { data: entries } = await supabase

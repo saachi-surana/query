@@ -104,7 +104,7 @@ export default function ModeratorPage() {
         .eq('session_id', session!.id)
         .eq('is_active', true)
         .limit(1)
-        .single()
+        .maybeSingle()
       if (wcs) {
         setActiveWordCloud(wcs)
         const { data: entries } = await supabase
@@ -209,7 +209,7 @@ export default function ModeratorPage() {
       .eq('session_id', session.id)
       .eq('is_active', true)
       .limit(1)
-      .single()
+      .maybeSingle()
     if (wcs) {
       setActiveWordCloud(wcs)
       const { data: entries } = await supabase
