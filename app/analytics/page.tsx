@@ -12,6 +12,7 @@ export default function AnalyticsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function loadAll() {
@@ -173,17 +174,65 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {upcomingSessions.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[0.8125rem] font-bold text-theme-primary uppercase tracking-wider">Upcoming</p>
-                {upcomingSessions.map((s) => (
-                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
-                    {s.title}
-                    <span className="block text-xs text-slate-500 mt-0.5">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                  </a>
-                ))}
-              </div>
-            )}
+            {upcomingSessions.length > 0 && (() => {
+              const sorted = [...upcomingSessions].sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())
+              const standalone = sorted.filter((s) => !s.recurrence_parent_id)
+              const recurringMap = new Map<string, Session[]>()
+              sorted.forEach((s) => {
+                if (s.recurrence_parent_id) {
+                  const group = recurringMap.get(s.recurrence_parent_id) || []
+                  group.push(s)
+                  recurringMap.set(s.recurrence_parent_id, group)
+                }
+              })
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-[0.8125rem] font-bold text-theme-primary uppercase tracking-wider">Upcoming</p>
+                  {standalone.map((s) => (
+                    <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
+                      {s.title}
+                      <span className="block text-xs text-slate-500 mt-0.5">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </a>
+                  ))}
+                  {Array.from(recurringMap.entries()).map(([parentId, group]) => {
+                    const first = group[0]
+                    const rest = group.slice(1)
+                    const isExpanded = expandedSeries.has(parentId)
+                    return (
+                      <div key={parentId}>
+                        <a href={`/session/${first.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
+                          {first.title}
+                        </a>
+                        {!isExpanded && rest.length > 0 ? (
+                          <button
+                            onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.add(parentId); return next })}
+                            className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
+                          >
+                            {new Date(first.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })} · +{rest.length} more ▾
+                          </button>
+                        ) : (
+                          <>
+                            {group.map((s) => (
+                              <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors">
+                                {new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </a>
+                            ))}
+                            {rest.length > 0 && (
+                              <button
+                                onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.delete(parentId); return next })}
+                                className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
+                              >
+                                ▴ Show less
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {pastSessions.length > 0 && (
               <div className="space-y-1.5">
@@ -272,7 +321,7 @@ export default function AnalyticsPage() {
 
           {/* AI Insights */}
           <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Insights</h2>
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">AI Insights</h2>
             {aiInsight ? (
               <div className="bg-theme-primary-subtle border border-theme-primary-light rounded-xl px-4 py-3">
                 <p className="text-sm text-orange-900 leading-relaxed">{aiInsight}</p>
@@ -284,7 +333,7 @@ export default function AnalyticsPage() {
                   disabled={aiLoading}
                   className="px-6 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
                 >
-                  {aiLoading ? 'Analyzing...' : 'Generate Insights'}
+                  {aiLoading ? 'Analyzing...' : 'Generate AI Insights'}
                 </button>
                 <p className="text-xs text-slate-400 mt-2">Analyzes trends across all your sessions</p>
               </div>

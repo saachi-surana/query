@@ -363,6 +363,7 @@ export default function ModeratorPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [allSessions, setAllSessions] = useState<Session[]>([])
+  const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
   const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
 
@@ -772,12 +773,27 @@ export default function ModeratorPage() {
 
             {/* Upcoming Sessions */}
             {(() => {
-              const upcoming = allSessions.filter((s) => s.starts_at && new Date(s.starts_at) > new Date() && !s.ended_at)
+              const upcoming = allSessions
+                .filter((s) => s.starts_at && new Date(s.starts_at) > new Date() && !s.ended_at)
+                .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())
               if (upcoming.length === 0) return null
+
+              // Group by recurrence_parent_id
+              const standalone = upcoming.filter((s) => !s.recurrence_parent_id)
+              const recurringMap = new Map<string, Session[]>()
+              upcoming.forEach((s) => {
+                if (s.recurrence_parent_id) {
+                  const group = recurringMap.get(s.recurrence_parent_id) || []
+                  group.push(s)
+                  recurringMap.set(s.recurrence_parent_id, group)
+                }
+              })
+
               return (
                 <div className="space-y-1.5">
                   <p className="text-[0.8125rem] font-bold text-theme-primary uppercase tracking-wider">Upcoming</p>
-                  {upcoming.map((s) => (
+                  {/* Standalone sessions */}
+                  {standalone.map((s) => (
                     <a
                       key={s.id}
                       href={`/session/${s.code}`}
@@ -791,6 +807,54 @@ export default function ModeratorPage() {
                       </span>
                     </a>
                   ))}
+                  {/* Recurring groups */}
+                  {Array.from(recurringMap.entries()).map(([parentId, group]) => {
+                    const first = group[0]
+                    const rest = group.slice(1)
+                    const isExpanded = expandedSeries.has(parentId)
+                    return (
+                      <div key={parentId}>
+                        <a
+                          href={`/session/${first.code}`}
+                          className={`block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug truncate transition-colors ${
+                            first.code === code ? 'bg-theme-sidebar-active-bg text-theme-sidebar-active-text font-medium' : 'text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg hover:text-theme-sidebar-text-hover'
+                          }`}
+                        >
+                          {first.title}
+                        </a>
+                        {!isExpanded && rest.length > 0 ? (
+                          <button
+                            onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.add(parentId); return next })}
+                            className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
+                          >
+                            {new Date(first.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })} · +{rest.length} more ▾
+                          </button>
+                        ) : (
+                          <>
+                            {group.map((s) => (
+                              <a
+                                key={s.id}
+                                href={`/session/${s.code}`}
+                                className={`block px-3 py-1 text-xs transition-colors ${
+                                  s.code === code ? 'text-theme-sidebar-active-text font-medium' : 'text-slate-400 hover:text-theme-primary'
+                                }`}
+                              >
+                                {new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </a>
+                            ))}
+                            {rest.length > 0 && (
+                              <button
+                                onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.delete(parentId); return next })}
+                                className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
+                              >
+                                ▴ Show less
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })()}
