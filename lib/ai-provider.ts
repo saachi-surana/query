@@ -20,7 +20,8 @@ function hasAnyKey(): boolean {
 async function geminiComplete(prompt: string, systemPrompt?: string): Promise<string> {
   const { GoogleGenerativeAI } = await import('@google/generative-ai')
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite'
+  const model = genAI.getGenerativeModel({ model: modelName })
   const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt
   const result = await model.generateContent(fullPrompt)
   return result.response.text()
