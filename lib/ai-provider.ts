@@ -54,19 +54,6 @@ export async function aiComplete(prompt: string, systemPrompt?: string): Promise
       return result
     } catch (err) {
       console.error('aiComplete: Gemini failed:', err instanceof Error ? err.message : err)
-      // If Anthropic key is available, fall back
-      const anthropicKey = process.env.ANTHROPIC_API_KEY
-      if (anthropicKey && anthropicKey !== 'sk-ant-placeholder') {
-        console.warn('aiComplete: Falling back to Anthropic...')
-        try {
-          const result = await anthropicComplete(prompt, systemPrompt)
-          console.log('aiComplete: Anthropic fallback returned', result.length, 'chars')
-          return result
-        } catch (fallbackErr) {
-          console.error('aiComplete: Anthropic fallback also failed:', fallbackErr instanceof Error ? fallbackErr.message : fallbackErr)
-          throw fallbackErr
-        }
-      }
       throw err
     }
   }
