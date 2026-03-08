@@ -45,9 +45,13 @@ function QuestionRow({
 }) {
   const [marking, setMarking] = useState(false)
   const [showReplies, setShowReplies] = useState(replies.length > 0)
+  const [showAllReplies, setShowAllReplies] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const REPLY_PREVIEW_COUNT = 3
+  const visibleReplies = showAllReplies ? replies : replies.slice(0, REPLY_PREVIEW_COUNT)
+  const hiddenCount = replies.length - REPLY_PREVIEW_COUNT
 
   async function handleToggle() {
     setMarking(true)
@@ -134,7 +138,7 @@ function QuestionRow({
 
       {showReplies && (
         <div className="ml-4 pl-3 border-l-2 border-slate-200 space-y-2">
-          {replies.map((r) => (
+          {visibleReplies.map((r) => (
             <div key={r.id} className="space-y-0.5">
               <p className="text-sm text-slate-700">{r.text}</p>
               <p className="text-xs text-slate-400">
@@ -146,6 +150,14 @@ function QuestionRow({
               </p>
             </div>
           ))}
+          {!showAllReplies && hiddenCount > 0 && (
+            <button
+              onClick={() => setShowAllReplies(true)}
+              className="text-xs text-theme-primary hover:text-theme-primary-hover transition-colors font-medium"
+            >
+              Show {hiddenCount} more repl{hiddenCount === 1 ? 'y' : 'ies'} ▾
+            </button>
+          )}
           <form onSubmit={handleReply} className="flex gap-2">
             <input
               type="text"
@@ -166,7 +178,7 @@ function QuestionRow({
           </form>
           {replies.length > 0 && (
             <button
-              onClick={() => setShowReplies(false)}
+              onClick={() => { setShowReplies(false); setShowAllReplies(false) }}
               className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
             >
               ▴ Collapse replies
@@ -1106,27 +1118,29 @@ export default function ModeratorPage() {
                 <div className="flex flex-wrap gap-2">
                   {(answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0) && (
                     <button
-                      onClick={() => setAnsweredSubtab('misc')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      onClick={() => setAnsweredSubtab(answeredSubtab === 'misc' ? '' : 'misc')}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         answeredSubtab === 'misc'
                           ? 'bg-gray-900 text-white border-gray-900'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       Misc ({answeredUnclusteredQuestions.length + answeredOrphanQuestions.length})
+                      <ChevronIcon open={answeredSubtab === 'misc'} />
                     </button>
                   )}
                   {answeredClusters.map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => setAnsweredSubtab(c.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      onClick={() => setAnsweredSubtab(answeredSubtab === c.id ? '' : c.id)}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                         answeredSubtab === c.id
                           ? 'bg-gray-900 text-white border-gray-900'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       {c.title} ({c.questions.length})
+                      <ChevronIcon open={answeredSubtab === c.id} />
                     </button>
                   ))}
                 </div>
