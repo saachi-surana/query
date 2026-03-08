@@ -51,11 +51,22 @@ export default function CreatePage() {
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
+  const [defaultLogoUrl, setDefaultLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     getUser().then((user) => {
       if (user) setUserId(user.id)
     })
+
+    // Load default branding from settings
+    const savedBrandColor = localStorage.getItem('query-default-brand-color')
+    if (savedBrandColor) setBrandColor(savedBrandColor)
+
+    const savedLogoUrl = localStorage.getItem('query-default-logo-url')
+    if (savedLogoUrl) {
+      setLogoPreview(savedLogoUrl)
+      setDefaultLogoUrl(savedLogoUrl)
+    }
   }, [])
 
   function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -74,10 +85,12 @@ export default function CreatePage() {
   function removeLogo() {
     setLogoFile(null)
     setLogoPreview(null)
+    setDefaultLogoUrl(null)
   }
 
   async function uploadLogo(): Promise<string | null> {
-    if (!logoFile) return null
+    // If no new file selected but we have a default logo URL from settings, use that
+    if (!logoFile) return defaultLogoUrl || null
     setLogoUploading(true)
     try {
       const ext = logoFile.name.split('.').pop() || 'png'

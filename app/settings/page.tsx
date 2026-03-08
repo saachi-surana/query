@@ -92,6 +92,15 @@ export default function SettingsPage() {
   const [defaultModeration, setDefaultModeration] = useState(false)
   const [defaultAutoSuggest, setDefaultAutoSuggest] = useState(false)
 
+  // Default branding
+  const [defaultBrandColor, setDefaultBrandColor] = useState('')
+  const [defaultLogoUrl, setDefaultLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [applyingToExisting, setApplyingToExisting] = useState(false)
+  const [brandingSaved, setBrandingSaved] = useState(false)
+
   // Theme
   const [activeTheme, setActiveTheme] = useState<ThemeName>('orange')
 
@@ -109,6 +118,15 @@ export default function SettingsPage() {
     if (savedTheme && themes[savedTheme]) {
       setActiveTheme(savedTheme)
       applyTheme(savedTheme)
+    }
+
+    const savedBrandColor = localStorage.getItem('query-default-brand-color')
+    if (savedBrandColor) setDefaultBrandColor(savedBrandColor)
+
+    const savedLogoUrl = localStorage.getItem('query-default-logo-url')
+    if (savedLogoUrl) {
+      setDefaultLogoUrl(savedLogoUrl)
+      setLogoPreview(savedLogoUrl)
     }
   }, [])
 
@@ -145,6 +163,90 @@ export default function SettingsPage() {
   function handleThemeChange(theme: ThemeName) {
     setActiveTheme(theme)
     applyTheme(theme)
+  }
+
+  const brandColorPresets = [
+    { color: '#F97316', label: 'Orange' },
+    { color: '#8B5CF6', label: 'Purple' },
+    { color: '#3B82F6', label: 'Blue' },
+    { color: '#10B981', label: 'Green' },
+    { color: '#EF4444', label: 'Red' },
+    { color: '#EC4899', label: 'Pink' },
+    { color: '#6366F1', label: 'Indigo' },
+    { color: '#14B8A6', label: 'Teal' },
+  ]
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo must be under 2 MB.')
+      return
+    }
+    setLogoFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setLogoPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function removeLogo() {
+    setLogoFile(null)
+    setLogoPreview('')
+    setDefaultLogoUrl('')
+    localStorage.removeItem('query-default-logo-url')
+  }
+
+  async function handleSaveBranding() {
+    setLogoUploading(true)
+    setBrandingSaved(false)
+    let finalLogoUrl = defaultLogoUrl
+
+    // Upload new logo if selected
+    if (logoFile) {
+      const ext = logoFile.name.split('.').pop() || 'png'
+      const path = `defaults/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('logos').upload(path, logoFile)
+      if (uploadError) {
+        alert('Failed to upload logo: ' + uploadError.message)
+        setLogoUploading(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
+      finalLogoUrl = urlData.publicUrl
+      setDefaultLogoUrl(finalLogoUrl)
+      setLogoFile(null)
+    }
+
+    // Save to localStorage
+    if (finalLogoUrl) {
+      localStorage.setItem('query-default-logo-url', finalLogoUrl)
+    } else {
+      localStorage.removeItem('query-default-logo-url')
+    }
+
+    if (defaultBrandColor) {
+      localStorage.setItem('query-default-brand-color', defaultBrandColor)
+    } else {
+      localStorage.removeItem('query-default-brand-color')
+    }
+
+    setLogoUploading(false)
+    setBrandingSaved(true)
+    setTimeout(() => setBrandingSaved(false), 2000)
+  }
+
+  async function handleApplyToExisting() {
+    setApplyingToExisting(true)
+    const updates: Record<string, string | null> = {
+      logo_url: defaultLogoUrl || null,
+      brand_color: defaultBrandColor || null,
+    }
+    const user = await getUser()
+    if (user) {
+      await supabase.from('sessions').update(updates).eq('user_id', user.id)
+    }
+    setApplyingToExisting(false)
+    alert('Branding applied to all your existing sessions.')
   }
 
   async function handleSignOut() {
@@ -250,6 +352,100 @@ export default function SettingsPage() {
                 <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ml-3 ${defaultAutoSuggest ? 'bg-theme-primary' : 'bg-slate-300'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${defaultAutoSuggest ? 'translate-x-5' : ''}`} />
                 </div>
+              </div>
+            </div>
+
+            {/* Default Branding Section */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-slate-900">Default Branding</h2>
+              <p className="text-sm text-slate-500">Set a default logo and brand color for new sessions. You can also apply it to all existing sessions.</p>
+
+              {/* Logo upload */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Logo</label>
+                {logoPreview ? (
+                  <div className="flex items-center gap-4">
+                    <img src={logoPreview} alt="Logo preview" className="h-12 max-w-[160px] object-contain rounded-lg border border-slate-200 p-1.5 bg-white" />
+                    <button
+                      onClick={removeLogo}
+                      className="text-sm text-red-500 hover:text-red-700 font-medium transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center w-full h-20 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors bg-slate-50">
+                    <div className="text-center">
+                      <p className="text-sm text-slate-500">Click to upload logo</p>
+                      <p className="text-xs text-slate-400">PNG, JPG, SVG, WebP (max 2 MB)</p>
+                    </div>
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoSelect} className="hidden" />
+                  </label>
+                )}
+              </div>
+
+              {/* Brand color */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Brand Color</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* No color / reset option */}
+                  <button
+                    onClick={() => setDefaultBrandColor('')}
+                    className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
+                      !defaultBrandColor ? 'border-slate-400 ring-2 ring-offset-1 ring-slate-400' : 'border-slate-200 hover:scale-110'
+                    }`}
+                    title="None (use theme default)"
+                  >
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  {brandColorPresets.map((preset) => (
+                    <button
+                      key={preset.color}
+                      onClick={() => setDefaultBrandColor(preset.color)}
+                      className={`w-7 h-7 rounded-full transition-all ${
+                        defaultBrandColor === preset.color ? 'ring-2 ring-offset-1' : 'hover:scale-110'
+                      }`}
+                      style={{
+                        backgroundColor: preset.color,
+                        boxShadow: defaultBrandColor === preset.color ? `0 0 0 1px white, 0 0 0 3px ${preset.color}` : undefined,
+                      }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+                {/* Custom hex */}
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={defaultBrandColor}
+                    onChange={(e) => setDefaultBrandColor(e.target.value)}
+                    placeholder="#hex or empty for default"
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
+                  />
+                  {defaultBrandColor && (
+                    <div className="w-8 h-8 rounded-lg border border-slate-200 shrink-0" style={{ backgroundColor: defaultBrandColor }} />
+                  )}
+                </div>
+              </div>
+
+              {/* Save + Apply buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={handleSaveBranding}
+                  disabled={logoUploading}
+                  className="px-5 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
+                >
+                  {logoUploading ? 'Uploading...' : brandingSaved ? 'Saved!' : 'Save Defaults'}
+                </button>
+                <button
+                  onClick={handleApplyToExisting}
+                  disabled={applyingToExisting}
+                  className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                >
+                  {applyingToExisting ? 'Applying...' : 'Apply to All Existing Sessions'}
+                </button>
               </div>
             </div>
 
