@@ -700,6 +700,106 @@ app/session/[code]/page.tsx         # Sidebar link + per-session analytics expan
 
 ---
 
+## Sprint 6: UI Consistency, Create Page Rework, DB Trigger, Export
+
+**Goal**: Complete visual consistency across all pages, add data export, and strengthen backend reliability with a DB trigger. Every page should feel like part of the same polished product.
+
+### 6.1 Create Page Header + Breadcrumb
+**Priority**: High — only page without the mesh gradient header
+
+**What to do**:
+- Add mesh gradient header bar to `app/create/page.tsx` matching other pages
+- Breadcrumb: "Query / Host a Session"
+- Page layout: `h-screen flex flex-col` with scrollable content area
+- Keep the form as-is, just wrap it in the new layout
+
+**Files**: `app/create/page.tsx`
+
+---
+
+### 6.2 Present Page Theme Variables
+**Priority**: Medium — dark-themed page still uses hardcoded colors
+
+**What to do**:
+- Update `app/present/[code]/page.tsx` to use CSS variables where applicable
+- The page is intentionally dark-themed (for projection), so keep the dark background
+- But replace any hardcoded violet/purple/blue references with theme variables
+- Add a subtle theme accent (e.g. primary color for highlighted cluster, QR code border)
+
+**Files**: `app/present/[code]/page.tsx`
+
+---
+
+### 6.3 DB Trigger: Auto-Mark Answered on Host Reply
+**Priority**: High — test suite flagged this gap
+
+**What to do**:
+- Create a Supabase trigger on the `replies` table
+- When a reply is inserted with `is_host = true`, auto-update the corresponding question's `status` to `'answered'`
+- This makes the behavior reliable regardless of which client inserts the reply
+- Add the migration SQL to `supabase-migrations.sql`
+
+**SQL**:
+```sql
+CREATE OR REPLACE FUNCTION auto_mark_answered()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_host = true THEN
+    UPDATE questions SET status = 'answered' WHERE id = NEW.question_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_host_reply_mark_answered
+  AFTER INSERT ON replies
+  FOR EACH ROW
+  EXECUTE FUNCTION auto_mark_answered();
+```
+
+**Files**: `supabase-migrations.sql`
+
+---
+
+### 6.4 Export Session Data (CSV)
+**Priority**: Medium — hosts want to take data out after sessions
+
+**What to do**:
+- Add an "Export CSV" button to the report page (`app/report/[code]/page.tsx`)
+- Export all questions with: text, author, upvotes, status, cluster title, replies
+- Client-side CSV generation (no API route needed)
+- Button styled with theme variables, placed near the top stats section
+
+**Files**: `app/report/[code]/page.tsx`
+
+---
+
+### 6.5 Mobile Responsiveness Pass
+**Priority**: Medium — attendees are primarily on phones
+
+**What to do**:
+- Audit all pages on small viewports (375px width)
+- Fix any overflow, truncation, or touch target issues
+- Sidebar should auto-collapse on mobile (< 768px)
+- Header breadcrumb should truncate gracefully
+- Join page and question submission must work perfectly on phone
+
+**Files**: All page files, potentially `app/globals.css`
+
+---
+
+### 6.6 Loading Skeletons + Error States
+**Priority**: Low — polish item
+
+**What to do**:
+- Replace plain "Loading..." text with animated skeleton cards
+- Add error boundaries that show a friendly message + retry button if Supabase fails
+- At minimum: session page, analytics page, report page
+
+**Files**: All page files with loading states
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)
