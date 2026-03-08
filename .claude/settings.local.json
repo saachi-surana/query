@@ -1,8 +1,25 @@
 {
   "permissions": {
     "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
       "WebSearch",
-      "Bash(npx tsc --noEmit --pretty)"
+      "WebFetch",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(gh *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(where *)",
+      "Bash(which *)",
+      "Bash(cat *)",
+      "Bash(cd *)",
+      "Bash(node tests/seed-and-test.mjs)"
     ]
   }
 }
