@@ -58,8 +58,24 @@ export default function ReportPage() {
 
   if (!session) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-slate-400">Loading...</div>
+      <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+        <div className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20 bg-slate-200 animate-pulse h-12" />
+        <div className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 animate-pulse">
+                <div className="h-8 bg-slate-200 rounded w-12 mx-auto" />
+                <div className="h-3 bg-slate-100 rounded w-16 mx-auto" />
+              </div>
+            ))}
+          </div>
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 animate-pulse">
+              <div className="h-4 bg-slate-200 rounded w-2/3" />
+              <div className="h-3 bg-slate-100 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
       </main>
     )
   }

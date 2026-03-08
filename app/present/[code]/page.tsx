@@ -162,8 +162,16 @@ export default function PresentPage() {
 
   if (!session) {
     return (
-      <main className="h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-pulse text-slate-400 text-lg">Loading...</div>
+      <main className="h-screen flex flex-col bg-slate-50">
+        <div className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 bg-slate-200 animate-pulse h-14" />
+        <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-6 space-y-3 animate-pulse">
+              <div className="h-6 bg-slate-200 rounded w-1/2" />
+              <div className="h-4 bg-slate-100 rounded w-3/4" />
+            </div>
+          ))}
+        </div>
       </main>
     )
   }

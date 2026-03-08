@@ -312,8 +312,17 @@ export default function JoinPage() {
 
   if (!session) {
     return (
-      <main className="h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse text-slate-400">Loading…</div>
+      <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+        <div className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20 bg-slate-200 animate-pulse h-12" />
+        <div className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-4">
+          <div className="h-6 w-40 bg-slate-200 rounded-lg animate-pulse" />
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 animate-pulse">
+              <div className="h-5 bg-slate-200 rounded w-3/4" />
+              <div className="h-4 bg-slate-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
       </main>
     )
   }
