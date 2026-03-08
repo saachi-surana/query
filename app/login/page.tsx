@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from '@/lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -28,7 +29,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/')
+    const redirect = searchParams.get('redirect') || '/'
+    router.push(redirect)
   }
 
   const inputClasses = 'w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors'
@@ -112,7 +114,7 @@ export default function LoginPage() {
         {/* Sign up link */}
         <p className="text-center text-sm" style={{ color: 'var(--theme-dark-muted)' }}>
           Don&apos;t have an account?{' '}
-          <a href="/signup" className="font-medium text-white underline underline-offset-2 hover:opacity-80 transition-opacity">
+          <a href={`/signup${searchParams.get('redirect') ? `?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : ''}`} className="font-medium text-white underline underline-offset-2 hover:opacity-80 transition-opacity">
             Sign up
           </a>
         </p>

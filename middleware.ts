@@ -30,11 +30,14 @@ export async function middleware(request: NextRequest) {
   )
 
   if (isProtected && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup') && user) {
-    return NextResponse.redirect(new URL('/', request.url))
+    const redirect = request.nextUrl.searchParams.get('redirect') || '/'
+    return NextResponse.redirect(new URL(redirect, request.url))
   }
 
   return response
