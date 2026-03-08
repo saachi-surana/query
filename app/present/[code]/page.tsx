@@ -130,43 +130,18 @@ export default function PresentPage() {
           {/* Left: branding + session title */}
           <div className="flex items-center gap-4 min-w-0">
             <h1 className="text-3xl font-bold text-white shrink-0">Query</h1>
-            <span className="text-white/40 text-2xl shrink-0">|</span>
+            <span className="text-white/30 text-2xl font-light shrink-0">/</span>
             <h2 className="text-xl text-white/80 truncate">{session.title}</h2>
           </div>
 
-          {/* Right: code + join URL + live count */}
-          <div className="flex items-center gap-6 shrink-0">
-            <div className="text-right">
-              <p className="font-mono text-3xl font-bold tracking-[0.2em] text-white">{code}</p>
-              <p className="text-sm text-white/60 font-mono">{joinUrl}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-center">
-              <p className="text-xs text-white/70 uppercase tracking-wider font-medium">Live Questions</p>
-              <p className="text-2xl font-bold font-mono text-white">{totalQuestions}</p>
-            </div>
+          {/* Right: join code + URL in a prominent bubble */}
+          <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 text-center">
+            <p className="text-xs text-white/70 uppercase tracking-wider font-medium mb-1">Join at</p>
+            <p className="font-mono text-3xl font-bold tracking-[0.15em] text-white">{code}</p>
+            <p className="text-sm text-white/60 font-mono mt-0.5">{joinUrl}</p>
           </div>
         </div>
       </header>
-
-      {/* Stats bar */}
-      <div className="shrink-0 px-6 py-2.5 bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto flex items-center justify-center gap-8 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Questions</span>
-            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalQuestions}</span>
-          </div>
-          <div className="w-px h-4 bg-slate-200" />
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Upvotes</span>
-            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalUpvotes}</span>
-          </div>
-          <div className="w-px h-4 bg-slate-200" />
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Clusters</span>
-            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{unansweredClusters.length}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
