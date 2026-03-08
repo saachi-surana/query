@@ -20,17 +20,19 @@
 - [x] Connection status indicator
 
 ### What's Missing for MVP
-- [ ] Presentation display view (projectable)
-- [ ] Question moderation toggle
-- [ ] Export session data
-- [ ] Session description visible to attendees
-- [ ] Attendee cluster view (read-only)
-- [ ] "Discussing now" cluster highlight
-- [ ] Better empty states & onboarding
+- [x] Presentation display view (projectable)
+- [x] Question moderation toggle
+- [x] Export session data
+- [x] Session description visible to attendees
+- [x] Attendee cluster view (read-only)
+- [x] "Discussing now" cluster highlight
+- [x] Better empty states & onboarding
 
 ---
 
 ## Sprint 1: Event-Ready MVP Polish
+
+**Status**: COMPLETED
 
 **Goal**: Make Query usable at a real live event. A host should be able to create a session, project it on screen, moderate questions, and manage the session end-to-end.
 
@@ -161,6 +163,8 @@ Cluster, Summary Question, Question Text, Author, Anonymous, Upvotes, Status, Re
 
 ## Sprint 2: Differentiation Features
 
+**Status**: COMPLETED
+
 **Goal**: Ship features that no competitor has. Make the "why Query over Slido" argument obvious.
 
 ### 2.1 "Discussing Now" Cluster Highlight
@@ -290,6 +294,8 @@ Cluster, Summary Question, Question Text, Author, Anonymous, Upvotes, Status, Re
 
 ## Sprint 3: Phase 2 Start
 
+**Status**: COMPLETED
+
 **Goal**: Begin reducing moderator workload with AI assistance.
 
 ### 3.1 Multi-Moderator Support
@@ -412,6 +418,8 @@ supabase-schema.sql                  # Updated schema
 ---
 
 ## Sprint 4: UI Rework + Dashboard + Recurring Sessions
+
+**Status**: COMPLETED
 
 **Goal**: Rework the moderator UI for a professional, scalable layout. Add a persistent left sidebar with session management, move settings to a floating panel, and support recurring sessions.
 
@@ -567,6 +575,8 @@ supabase-migrations.sql             # Add recurrence columns
 
 ## Sprint 5: Global Analytics Dashboard
 
+**Status**: COMPLETED
+
 **Goal**: Build a comprehensive analytics page accessible from the sidebar that shows cross-session insights, per-session deep metrics, and engagement data that no competitor offers.
 
 ### Research Summary
@@ -701,6 +711,8 @@ app/session/[code]/page.tsx         # Sidebar link + per-session analytics expan
 ---
 
 ## Sprint 6: UI Consistency, Create Page Rework, DB Trigger, Export
+
+**Status**: COMPLETED (committed in Sprint 6 UI rework)
 
 **Goal**: Complete visual consistency across all pages, add data export, and strengthen backend reliability with a DB trigger. Every page should feel like part of the same polished product.
 
@@ -844,6 +856,8 @@ Walk through every page on a real phone (or Chrome DevTools mobile mode at 375px
 ---
 
 ## Sprint 7: Host Authentication & AI Model Integration
+
+**Status**: IN PROGRESS — 4/5 tasks done (7.4 AI Summary Question prominence remaining)
 
 **Goal**: Add host authentication so each host owns their sessions, and upgrade the AI clustering engine to be cheaper, faster, and provider-agnostic. Research free-tier AI options to minimize costs.
 
