@@ -44,7 +44,7 @@ function QuestionRow({
   onReply: (questionId: string, text: string) => Promise<void>
 }) {
   const [marking, setMarking] = useState(false)
-  const [showReplies, setShowReplies] = useState(false)
+  const [showReplies, setShowReplies] = useState(replies.length > 0)
   const [suggesting, setSuggesting] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -164,6 +164,14 @@ function QuestionRow({
               Send
             </button>
           </form>
+          {replies.length > 0 && (
+            <button
+              onClick={() => setShowReplies(false)}
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              ▴ Collapse replies
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -356,6 +364,7 @@ export default function ModeratorPage() {
   const [connected, setConnected] = useState(true)
   const [copied, setCopied] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [copyToast, setCopyToast] = useState<string | null>(null)
   const [clustersOpen, setClustersOpen] = useState(true)
   const [unclusteredOpen, setUnclusteredOpen] = useState(true)
   const [answeredOpen, setAnsweredOpen] = useState(false)
@@ -595,7 +604,8 @@ export default function ModeratorPage() {
   function copyLink() {
     navigator.clipboard.writeText(attendeeUrl).then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopyToast(attendeeUrl)
+      setTimeout(() => { setCopied(false); setCopyToast(null) }, 3000)
     })
   }
 
@@ -746,6 +756,19 @@ export default function ModeratorPage() {
           </div>
         </div>
       </header>
+
+      {/* Copy toast */}
+      {copyToast && (
+        <div className="fixed sm:absolute sm:top-14 sm:right-4 bottom-6 sm:bottom-auto left-1/2 sm:left-auto -translate-x-1/2 sm:translate-x-0 z-30 animate-[fadeIn_0.2s_ease-out]">
+          <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm max-w-[90vw]">
+            <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+            <span className="truncate font-mono text-xs">{copyToast}</span>
+            <button onClick={() => setCopyToast(null)} className="shrink-0 ml-1 text-white/50 hover:text-white transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
 
