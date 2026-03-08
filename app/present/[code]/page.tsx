@@ -271,6 +271,8 @@ export default function PresentPage() {
     )
   }
 
+  const isEmpty = totalQuestions === 0 && !activePoll && !activeWordCloud
+
   return (
     <main className="h-screen flex flex-col bg-slate-50">
       {/* Brand color override */}
@@ -287,20 +289,26 @@ export default function PresentPage() {
       <MeshHeader>
         <div className="relative flex flex-col sm:flex-row items-center sm:justify-between gap-2">
           {/* Left: branding + session title */}
-          <div className="flex items-baseline gap-3 min-w-0 text-center sm:text-left">
+          <div className="flex flex-wrap items-baseline gap-3 min-w-0 text-center sm:text-left justify-center sm:justify-start">
             {session.logo_url && (
               <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-8 max-w-[120px]" />
             )}
             <a href="/" className="text-2xl font-bold text-white shrink-0 tracking-tight hover:opacity-80 transition-opacity">Query</a>
-            <span className="text-white/30 text-lg font-light shrink-0">/</span>
-            <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
+            {!isEmpty && (
+              <>
+                <span className="text-white/30 text-lg font-light shrink-0">/</span>
+                <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
+              </>
+            )}
           </div>
 
-          {/* Right: join code + URL — Kahoot-style prominent */}
-          <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-2.5 text-center">
-            <p className="text-[10px] text-white/60 uppercase tracking-widest font-semibold">Join at <span className="text-white/90">{typeof window !== 'undefined' ? window.location.host : ''}/join</span></p>
-            <p className="font-mono text-4xl font-bold tracking-[0.2em] text-white leading-tight">{code}</p>
-          </div>
+          {/* Right: join code + URL — only shown when questions exist */}
+          {!isEmpty && (
+            <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl px-4 sm:px-6 py-2 sm:py-2.5 text-center hidden sm:block">
+              <p className="text-[10px] text-white/60 uppercase tracking-widest font-semibold">Join at <span className="text-white/90">{typeof window !== 'undefined' ? window.location.host : ''}/join</span></p>
+              <p className="font-mono text-4xl font-bold tracking-[0.2em] text-white leading-tight">{code}</p>
+            </div>
+          )}
         </div>
       </MeshHeader>
 
@@ -341,24 +349,24 @@ export default function PresentPage() {
           </div>
         )}
 
-        {totalQuestions === 0 && !activePoll && !activeWordCloud ? (
-          /* Empty state */
-          <div className="h-full flex flex-col items-center justify-center space-y-8">
-            <div className="text-center space-y-3">
-              <p className="text-4xl font-bold text-slate-700">Ask a question!</p>
-              <p className="text-xl text-slate-400">Go to the link below and submit your questions</p>
+        {isEmpty ? (
+          /* Empty state — large centered welcome */
+          <div className="h-full flex flex-col items-center justify-center space-y-8 px-4">
+            <h1 className="text-4xl sm:text-5xl font-bold text-slate-800 text-center leading-tight">{session.title}</h1>
+            {session.description && (
+              <p className="text-lg sm:text-xl text-slate-500 text-center max-w-xl">{session.description}</p>
+            )}
+            <div className="rounded-xl border-2 p-4 bg-white shadow-sm" style={{ borderColor: 'var(--theme-primary-light)' }}>
+              <QRCodeSVG value={joinUrl} size={200} level="M" />
             </div>
-            <div className="rounded-2xl px-10 py-6 text-center space-y-4 border-2" style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}>
-              <p className="text-slate-500 text-sm uppercase tracking-wider">Join Code</p>
-              <p className="font-mono text-5xl font-bold tracking-[0.3em] text-slate-900">{code}</p>
-              <div className="flex justify-center">
-                <div className="rounded-xl border-2 p-3 bg-white" style={{ borderColor: 'var(--theme-primary-light)' }}>
-                  <QRCodeSVG value={joinUrl} size={180} level="M" />
-                </div>
-              </div>
-              <p className="text-slate-500 text-base font-medium">Share this QR code with your audience</p>
-              <p className="text-slate-500 text-sm font-mono">{joinUrl}</p>
+            <div className="text-center space-y-2">
+              <p className="text-lg text-slate-500">
+                Join at{' '}
+                <span className="font-semibold text-slate-700">{typeof window !== 'undefined' ? window.location.host : ''}/join</span>
+              </p>
+              <p className="font-mono text-5xl sm:text-6xl font-bold tracking-[0.25em] text-slate-900">{code}</p>
             </div>
+            <p className="text-base text-slate-400 animate-pulse">Scan to ask a question</p>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto space-y-4">
@@ -454,13 +462,15 @@ export default function PresentPage() {
         )}
       </div>
 
-      {/* QR code overlay — bottom-right corner */}
-      <div className="fixed bottom-4 right-4 z-20">
-        <div className="rounded-xl border bg-white/95 backdrop-blur-sm p-2 shadow-lg" style={{ borderColor: 'var(--theme-primary-light)' }}>
-          <QRCodeSVG value={joinUrl} size={120} level="M" />
-          <p className="text-[10px] text-slate-500 text-center mt-1 font-mono">{code}</p>
+      {/* QR code overlay — bottom-right corner, hidden when empty (shown in center instead) */}
+      {!isEmpty && (
+        <div className="fixed bottom-4 right-4 z-20">
+          <div className="rounded-xl border bg-white/95 backdrop-blur-sm p-2 shadow-lg" style={{ borderColor: 'var(--theme-primary-light)' }}>
+            <QRCodeSVG value={joinUrl} size={100} level="M" />
+            <p className="text-[10px] text-slate-500 text-center mt-1 font-mono">{code}</p>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   )
 }

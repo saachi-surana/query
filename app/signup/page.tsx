@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [confirmTouched, setConfirmTouched] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -140,16 +141,33 @@ export default function SignupPage() {
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setConfirmTouched(true) }}
                     placeholder="Repeat your password"
                     required
                     className={inputClasses}
                   />
+                  {confirmTouched && confirmPassword && (
+                    password === confirmPassword ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-xs text-emerald-600">Passwords match</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span className="text-xs text-red-600">Passwords don't match</span>
+                      </div>
+                    )
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading || !email.trim() || !password || !confirmPassword}
+                  disabled={loading || !email.trim() || !password || !confirmPassword || password !== confirmPassword}
                   className="w-full py-3 px-4 bg-theme-primary text-white rounded-2xl font-medium text-sm hover:bg-theme-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   {loading && (

@@ -1128,7 +1128,7 @@ supabase-schema.sql                # Updated schema
 
 ## Sprint 8: Tech Debt + Component Extraction
 
-**Status**: NOT STARTED
+**Status**: COMPLETED
 
 **Goal**: Clean up the codebase, extract shared components, and improve maintainability.
 
@@ -1270,7 +1270,7 @@ supabase-schema.sql                # Updated schema
 
 ## Sprint 9: New Features (Competitive Gaps)
 
-**Status**: NOT STARTED
+**Status**: COMPLETED
 
 **Goal**: Add the most impactful missing features identified in the competitive analysis. Close key gaps with Slido, Mentimeter, and Pigeonhole.
 
@@ -1572,7 +1572,7 @@ package.json                          # New dependencies (qrcode.react, jspdf)
 
 ## Sprint 10: Settings Page
 
-**Status**: NOT STARTED
+**Status**: COMPLETED
 
 **Goal**: Add a settings page accessible from the sidebar, with profile management, session defaults, and appearance customization.
 
@@ -1680,13 +1680,6 @@ components/Sidebar.tsx               # Replace "Settings (coming soon)" with lin
 middleware.ts                        # Add /settings to protected routes
 app/globals.css                      # Theme picker CSS variable support
 ```
-
----
-
-### Sprint 10 Notes
-
-- The "Settings (coming soon)" placeholder in the sidebar (`components/Sidebar.tsx` line 178) will be replaced with a working link in task 10.4
-- The "Profile (coming soon)" placeholder (line 177) remains as-is — profile functionality is handled within the settings page's Profile section (10.1)
 
 ---
 

@@ -95,7 +95,6 @@ export default function SettingsPage() {
   // Default branding
   const [defaultBrandColor, setDefaultBrandColor] = useState('')
   const [defaultLogoUrl, setDefaultLogoUrl] = useState('')
-  const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const [applyingToExisting, setApplyingToExisting] = useState(false)
@@ -210,13 +209,11 @@ export default function SettingsPage() {
     const url = urlData.publicUrl
     setDefaultLogoUrl(url)
     setLogoPreview(url)
-    setLogoFile(null)
     localStorage.setItem('query-default-logo-url', url)
     setLogoUploading(false)
   }
 
   function removeLogo() {
-    setLogoFile(null)
     setLogoPreview('')
     setDefaultLogoUrl('')
     localStorage.removeItem('query-default-logo-url')
