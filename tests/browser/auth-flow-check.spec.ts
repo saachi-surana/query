@@ -5,12 +5,12 @@ const BASE = 'http://localhost:3000';
 test.describe('Auth flow verification', () => {
   test('Login page loads with Sign In text', async ({ page }) => {
     await page.goto(`${BASE}/login`);
-    await expect(page.getByText(/sign in/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible({ timeout: 10000 });
   });
 
   test('Signup page loads with Create Account or Sign Up text', async ({ page }) => {
     await page.goto(`${BASE}/signup`);
-    await expect(page.getByText(/create account|sign up/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible({ timeout: 10000 });
   });
 
   test('/create redirects to /login (protected route)', async ({ page }) => {

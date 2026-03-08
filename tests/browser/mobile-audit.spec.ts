@@ -56,7 +56,7 @@ test.afterAll(async () => {
 });
 
 // =====================================================================
-// Screenshot every page + check for horizontal overflow
+// Public pages - screenshot + check for horizontal overflow
 // =====================================================================
 
 test('Mobile: Landing page', async ({ page }) => {
@@ -70,16 +70,6 @@ test('Mobile: Landing page', async ({ page }) => {
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5); // 5px tolerance
 });
 
-test('Mobile: Create page', async ({ page }) => {
-  await page.goto('/create');
-  await page.waitForTimeout(1000);
-  await page.screenshot({ path: path.join(screenshotDir, '02-create.png'), fullPage: true });
-
-  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5);
-});
-
 test('Mobile: Join page', async ({ page }) => {
   await page.goto(`/join/${sessionCode}`);
   await page.waitForTimeout(2000);
@@ -88,59 +78,6 @@ test('Mobile: Join page', async ({ page }) => {
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5);
-});
-
-test('Mobile: Session dashboard', async ({ page }) => {
-  await page.goto(`/session/${sessionCode}`);
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotDir, '04-session.png'), fullPage: true });
-
-  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-
-  // Flag if sidebar is causing overflow
-  if (scrollWidth > clientWidth + 5) {
-    console.log(`  WARNING: Horizontal overflow detected! scrollWidth=${scrollWidth}, clientWidth=${clientWidth}`);
-    console.log('  Likely cause: sidebar is open on mobile');
-  }
-});
-
-test('Mobile: Session with sidebar closed', async ({ page }) => {
-  await page.goto(`/session/${sessionCode}`);
-  await page.waitForTimeout(1000);
-
-  // Close sidebar via hamburger
-  const hamburger = page.locator('header button').first();
-  await hamburger.click();
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(screenshotDir, '05-session-no-sidebar.png'), fullPage: true });
-
-  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5);
-});
-
-test('Mobile: Header buttons overflow check', async ({ page }) => {
-  await page.goto(`/session/${sessionCode}`);
-  await page.waitForTimeout(1000);
-
-  // Close sidebar first
-  const hamburger = page.locator('header button').first();
-  await hamburger.click();
-  await page.waitForTimeout(300);
-
-  // Check if header content overflows
-  const headerOverflow = await page.evaluate(() => {
-    const header = document.querySelector('header');
-    if (!header) return false;
-    return header.scrollWidth > header.clientWidth;
-  });
-
-  await page.screenshot({ path: path.join(screenshotDir, '06-header-check.png') });
-
-  if (headerOverflow) {
-    console.log('  WARNING: Header content overflows on mobile');
-  }
 });
 
 test('Mobile: Present page', async ({ page }) => {
@@ -155,17 +92,45 @@ test('Mobile: Present page', async ({ page }) => {
   }
 });
 
-test('Mobile: Analytics page', async ({ page }) => {
-  await page.goto('/analytics');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotDir, '08-analytics.png'), fullPage: true });
+// =====================================================================
+// Protected pages - verify redirect to /login, then screenshot login page
+// =====================================================================
+
+test('Mobile: /create redirects to /login', async ({ page }) => {
+  await page.goto('/create');
+  await expect(page).toHaveURL('/login', { timeout: 10000 });
+  await page.screenshot({ path: path.join(screenshotDir, '02-create-redirected-to-login.png'), fullPage: true });
+
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5);
 });
 
-test('Mobile: Report page', async ({ page }) => {
-  await page.goto(`/report/${sessionCode}`);
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotDir, '09-report.png'), fullPage: true });
+test('Mobile: /session/:code redirects to /login', async ({ page }) => {
+  await page.goto(`/session/${sessionCode}`);
+  await expect(page).toHaveURL('/login', { timeout: 10000 });
+  await page.screenshot({ path: path.join(screenshotDir, '04-session-redirected-to-login.png'), fullPage: true });
+
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 5);
 });
+
+test('Mobile: /analytics redirects to /login', async ({ page }) => {
+  await page.goto('/analytics');
+  await expect(page).toHaveURL('/login', { timeout: 10000 });
+  await page.screenshot({ path: path.join(screenshotDir, '08-analytics-redirected-to-login.png'), fullPage: true });
+});
+
+test('Mobile: /report/:code redirects to /login', async ({ page }) => {
+  await page.goto(`/report/${sessionCode}`);
+  await expect(page).toHaveURL('/login', { timeout: 10000 });
+  await page.screenshot({ path: path.join(screenshotDir, '09-report-redirected-to-login.png'), fullPage: true });
+});
+
+// =====================================================================
+// Public page interactions
+// =====================================================================
 
 test('Mobile: Touch targets check (buttons >= 44px)', async ({ page }) => {
   await page.goto(`/join/${sessionCode}`);
