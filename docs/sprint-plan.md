@@ -820,6 +820,29 @@ CREATE TRIGGER on_host_reply_mark_answered
 
 ---
 
+### ACTION ITEM: Manual Mobile Review
+
+**Owner**: Shreya (personal review)
+**Priority**: High — do before Sprint 7
+
+Walk through every page on a real phone (or Chrome DevTools mobile mode at 375px):
+- Landing page: mesh gradient, cards, join input
+- Create page: form fields, date/time pickers, recurrence pills
+- Session dashboard: question cards, sidebar overlay, mobile action bar
+- Join page: question submission, upvoting, tabs
+- Present page: join code bubble vs title spacing (currently too close on mobile)
+- Analytics page: stats cards, charts, sidebar
+- Report page: stats, export button, questions list
+
+**Things to specifically check**:
+- Present page header: "Query" and session title overlap with the join code bubble on mobile — needs spacing or stacking fix
+- Touch targets: all buttons should be easy to tap (min 44px)
+- Text truncation: long session titles, long questions
+- Sidebar overlay: opens smoothly, backdrop dismisses, no content shift
+- Mobile action bar: code + Present buttons centered and tappable
+
+---
+
 ## Sprint 7: Host Authentication & AI Model Integration
 
 **Goal**: Add host authentication so each host owns their sessions, and upgrade the AI clustering engine to be cheaper, faster, and provider-agnostic. Research free-tier AI options to minimize costs.

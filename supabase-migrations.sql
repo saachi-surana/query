@@ -109,6 +109,19 @@ DO $$ BEGIN
 END $$;
 
 -- ============================================================
+-- EMPTY TEXT CONSTRAINT (Sprint 6)
+-- ============================================================
+
+-- Prevent empty question text at the database level
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'questions_text_not_empty'
+  ) THEN
+    ALTER TABLE questions ADD CONSTRAINT questions_text_not_empty CHECK (char_length(trim(text)) > 0);
+  END IF;
+END $$;
+
+-- ============================================================
 -- REALTIME
 -- ============================================================
 
