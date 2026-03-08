@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { jsPDF } from 'jspdf'
 import { supabase, Session, Question, Cluster, Reply, FaqEntry } from '@/lib/supabase'
 
 type ClusterWithQuestions = Cluster & { questions: Question[] }
@@ -117,6 +118,169 @@ export default function ReportPage() {
     link.download = `query-${code}-export.csv`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  function exportPDF() {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 20
+    const maxWidth = pageWidth - margin * 2
+    let y = 20
+
+    function checkPageBreak(needed: number) {
+      if (y + needed > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage()
+        y = 20
+      }
+    }
+
+    // Title
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text(session!.title, margin, y)
+    y += 8
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120, 120, 120)
+    doc.text(`Session Code: ${code}`, margin, y)
+    y += 5
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y)
+    y += 10
+
+    // Stats
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Summary', margin, y)
+    y += 7
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    const stats = [
+      `Total Questions: ${questions.length}`,
+      `Answered: ${answeredQuestions.length}`,
+      `Unanswered: ${unansweredQuestions.length}`,
+      `Total Upvotes: ${totalUpvotes}`,
+    ]
+    stats.forEach((stat) => {
+      doc.text(stat, margin, y)
+      y += 5
+    })
+    y += 8
+
+    // Helper to render a cluster section
+    function renderClusterSection(title: string, clusterList: ClusterWithQuestions[], color: [number, number, number]) {
+      if (clusterList.length === 0) return
+
+      checkPageBreak(20)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...color)
+      doc.text(title, margin, y)
+      y += 8
+
+      clusterList.forEach((c) => {
+        checkPageBreak(25)
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(0, 0, 0)
+        const clusterTitle = `${c.title} (${c.questions.length} question${c.questions.length !== 1 ? 's' : ''})`
+        doc.text(clusterTitle, margin, y)
+        y += 6
+
+        if (c.summary_question) {
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'italic')
+          doc.setTextColor(80, 80, 80)
+          const summaryLines = doc.splitTextToSize(`AI Summary: ${c.summary_question}`, maxWidth)
+          checkPageBreak(summaryLines.length * 4 + 4)
+          doc.text(summaryLines, margin + 4, y)
+          y += summaryLines.length * 4 + 2
+        }
+
+        c.questions.forEach((q) => {
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(0, 0, 0)
+          const author = q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'
+          const prefix = `[${q.upvotes} votes] `
+          const questionLines = doc.splitTextToSize(`${prefix}${q.text} — ${author}`, maxWidth - 8)
+          checkPageBreak(questionLines.length * 4 + 4)
+          doc.text(questionLines, margin + 8, y)
+          y += questionLines.length * 4 + 2
+        })
+
+        y += 4
+      })
+    }
+
+    renderClusterSection(
+      `Unanswered Questions (${unansweredQuestions.length})`,
+      unansweredClusters,
+      [220, 38, 38]
+    )
+
+    // Unclustered unanswered
+    if (unclusteredUnanswered.length > 0) {
+      checkPageBreak(20)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(0, 0, 0)
+      doc.text(`Uncategorized (${unclusteredUnanswered.length})`, margin, y)
+      y += 6
+
+      unclusteredUnanswered.forEach((q) => {
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        const questionLines = doc.splitTextToSize(`[${q.upvotes} votes] ${q.text}`, maxWidth - 8)
+        checkPageBreak(questionLines.length * 4 + 4)
+        doc.text(questionLines, margin + 8, y)
+        y += questionLines.length * 4 + 2
+      })
+      y += 4
+    }
+
+    renderClusterSection(
+      `Answered Topics (${answeredClusters.length})`,
+      answeredClusters,
+      [22, 163, 74]
+    )
+
+    // FAQ section
+    if (faqs.length > 0) {
+      checkPageBreak(20)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(100, 100, 100)
+      doc.text(`FAQ Library (${faqs.length})`, margin, y)
+      y += 8
+
+      faqs.forEach((f) => {
+        checkPageBreak(20)
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(0, 0, 0)
+        doc.text(f.cluster_title, margin, y)
+        y += 5
+
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        const qLines = doc.splitTextToSize(`Q: ${f.summary_question}`, maxWidth - 4)
+        checkPageBreak(qLines.length * 4 + 4)
+        doc.text(qLines, margin + 4, y)
+        y += qLines.length * 4 + 2
+
+        doc.setTextColor(60, 60, 60)
+        const aLines = doc.splitTextToSize(`A: ${f.answer}`, maxWidth - 4)
+        checkPageBreak(aLines.length * 4 + 4)
+        doc.text(aLines, margin + 4, y)
+        y += aLines.length * 4 + 4
+        doc.setTextColor(0, 0, 0)
+      })
+    }
+
+    doc.save(`query-${code}-report.pdf`)
   }
 
   const unansweredClusters: ClusterWithQuestions[] = clusters
@@ -277,8 +441,30 @@ export default function ReportPage() {
               {session.description && <p className="text-sm text-slate-500">{session.description}</p>}
             </div>
 
-            {/* Export CSV */}
-            <div className="flex justify-end">
+            {/* Export buttons */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={exportPDF}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border"
+                style={{
+                  background: 'var(--theme-primary-subtle)',
+                  color: 'var(--theme-primary-hover)',
+                  borderColor: 'var(--theme-primary-light)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--theme-primary)'
+                  e.currentTarget.style.color = '#ffffff'
+                  e.currentTarget.style.borderColor = 'var(--theme-primary)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--theme-primary-subtle)'
+                  e.currentTarget.style.color = 'var(--theme-primary-hover)'
+                  e.currentTarget.style.borderColor = 'var(--theme-primary-light)'
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                Export PDF
+              </button>
               <button
                 onClick={exportCSV}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border"
