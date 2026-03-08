@@ -248,12 +248,6 @@ export default function ReportPage() {
             </div>
           </div>
         </aside>
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-10 sm:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
