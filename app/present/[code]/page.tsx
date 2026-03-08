@@ -185,9 +185,9 @@ export default function PresentPage() {
         <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
         <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
 
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex flex-col sm:flex-row items-center sm:justify-between gap-2">
           {/* Left: branding + session title */}
-          <div className="flex items-baseline gap-3 min-w-0">
+          <div className="flex items-baseline gap-3 min-w-0 text-center sm:text-left">
             <h1 className="text-2xl font-bold text-white shrink-0 tracking-tight">Query</h1>
             <span className="text-white/30 text-lg font-light shrink-0">/</span>
             <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>

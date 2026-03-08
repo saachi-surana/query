@@ -820,6 +820,269 @@ CREATE TRIGGER on_host_reply_mark_answered
 
 ---
 
+## Sprint 7: Host Authentication & AI Model Integration
+
+**Goal**: Add host authentication so each host owns their sessions, and upgrade the AI clustering engine to be cheaper, faster, and provider-agnostic. Research free-tier AI options to minimize costs.
+
+---
+
+### 7.1 Host Authentication (Login/Signup)
+**Priority**: Critical — multi-tenancy requires knowing who owns what
+
+**What it is**: Basic email + password authentication using Supabase Auth. Hosts must log in to create and manage sessions. Attendees do not need auth (joining by code remains public).
+
+**Features**:
+- Login and signup pages with clean UI matching the existing theme
+- Protected routes: session dashboard, analytics, report pages require auth
+- Store `user_id` on sessions table so each host owns their sessions
+- Dashboard shows only the authenticated host's sessions
+- Sidebar, analytics, and report pages filtered by logged-in user
+
+**UI spec**:
+- `/login` — email + password form, "Sign Up" link, "Forgot Password" link
+- `/signup` — email + password + confirm password, "Already have an account?" link
+- Both pages use the mesh gradient header, centered card layout
+- After login, redirect to `/` (home) which shows the host's sessions
+- Session header shows user email/avatar with a dropdown: "My Sessions", "Log Out"
+
+**Auth flow**:
+- Supabase Auth handles email/password, JWT tokens, session management
+- Middleware checks auth state on protected routes
+- Unauthenticated users on protected routes redirect to `/login`
+- Public routes: `/`, `/join/[code]`, `/present/[code]`, `/login`, `/signup`
+
+**Files to create/modify**:
+- `app/login/page.tsx` — login page
+- `app/signup/page.tsx` — signup page
+- `middleware.ts` — auth middleware for protected routes
+- `lib/auth.ts` — auth helper functions
+- `components/Sidebar.tsx` — filter sessions by user
+- `app/session/[code]/page.tsx` — verify ownership
+- `app/analytics/page.tsx` — filter by user
+- `app/report/[code]/page.tsx` — verify ownership
+
+**Estimated complexity**: Medium-High
+
+---
+
+### 7.2 Database Auth Integration
+**Priority**: Critical — required for 7.1 to work
+
+**What it is**: Database changes to support per-host session ownership and Row Level Security (RLS) policies.
+
+**Database changes**:
+- Add `user_id uuid references auth.users(id)` column to `sessions` table
+- Migrate existing sessions to work with auth (assign to a default admin user or leave nullable initially)
+- RLS policies: hosts can only CRUD their own sessions
+- Attendees don't need auth — joining by code remains public
+- Questions, clusters, replies inherit access through their parent session
+
+**RLS policies**:
+```sql
+-- Sessions: hosts can only see/modify their own
+CREATE POLICY "Users can view their own sessions"
+  ON sessions FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create sessions"
+  ON sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own sessions"
+  ON sessions FOR UPDATE USING (auth.uid() = user_id);
+
+-- Public read access for attendees (via session code)
+CREATE POLICY "Anyone can view sessions by code"
+  ON sessions FOR SELECT USING (true);
+
+-- Questions: anyone can insert (attendees), hosts can update
+CREATE POLICY "Anyone can submit questions"
+  ON questions FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can view questions in a session"
+  ON questions FOR SELECT USING (true);
+```
+
+**Migration SQL**: `supabase-add-auth.sql`
+
+**Files to create/modify**:
+- `supabase-add-auth.sql` — migration for user_id column + RLS policies
+- `supabase-schema.sql` — updated schema
+- `lib/supabase.ts` — updated Session type with user_id
+
+**Estimated complexity**: Medium
+
+---
+
+### 7.3 AI Model Selection & Integration
+**Priority**: High — reduce AI costs by 20x while maintaining quality
+
+**What it is**: Replace the single Claude Haiku integration with a provider-agnostic AI layer that supports multiple providers and models. Default to a cheaper, faster model for clustering.
+
+**Research reference**: See `docs/ai-model-research.md` for full analysis.
+
+**Implementation**:
+- Create a provider abstraction layer with a common interface
+- Support OpenAI-compatible APIs (covers Groq, Together AI, Mistral, OpenAI)
+- Support Anthropic API (current integration)
+- Support Google Gemini API
+- Configuration via environment variables (provider, model, API key)
+- Fallback behavior: if primary provider fails, try secondary, then tertiary
+
+**Recommended default**: Groq (Llama 3.1 8B) — $0.05/1M tokens, sub-500ms latency, free tier available
+
+**Environment variables**:
+```env
+AI_PRIMARY_PROVIDER=groq
+AI_PRIMARY_MODEL=llama-3.1-8b-instant
+AI_FALLBACK_PROVIDER=anthropic
+AI_FALLBACK_MODEL=claude-haiku-4-5
+GROQ_API_KEY=
+```
+
+**Files to create/modify**:
+- `lib/ai-provider.ts` — provider abstraction layer
+- `lib/providers/groq.ts` — Groq provider
+- `lib/providers/anthropic.ts` — Anthropic provider (refactor from current)
+- `lib/providers/gemini.ts` — Gemini provider
+- `lib/providers/openai.ts` — OpenAI provider
+- `app/api/cluster/route.ts` — use new provider abstraction
+- `.env.example` — document new environment variables
+
+**Estimated complexity**: Medium-High
+
+---
+
+### 7.4 AI Summary Question per Cluster
+**Priority**: Medium — improve visibility of an existing feature
+
+**What it is**: Each cluster already has an AI-generated summary question (`clusters.summary_question`), but it needs to be more prominent and editable.
+
+**Current state**:
+- Summary question exists in the data model
+- Shown in presenter view (already there)
+- Shown in dashboard cluster cards (already there)
+
+**What to add**:
+- Show the summary question in the attendee join page Topics tab (cluster view)
+- Auto-generate when a cluster is created or updated (re-run summarization when new questions join a cluster)
+- Allow the host to edit the summary question manually (inline edit on cluster card)
+- Show a "Generated by AI" badge that changes to "Edited by host" after manual edit
+
+**UI spec**:
+- Cluster card: summary question displayed prominently below cluster title
+- Edit icon (pencil) next to summary question — click to inline edit
+- After edit, badge changes from "AI Generated" to "Custom"
+- Topics tab on attendee page: each cluster shows its summary question
+
+**Database changes**:
+- Add `summary_edited boolean not null default false` to `clusters` table (tracks if host manually edited)
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add inline edit for summary question
+- `app/join/[code]/page.tsx` — show summary question in Topics tab
+- `app/api/cluster/route.ts` — re-generate summary when cluster is updated
+- `lib/supabase.ts` — update Cluster type
+- Migration SQL for `summary_edited` column
+
+**Estimated complexity**: Medium
+
+---
+
+### 7.5 Free-Tier AI Model Research (Documentation Only)
+**Priority**: Low — research task, no code changes
+
+**What it is**: Deep comparison of free-tier AI APIs and open-source model recommendations for Query's use case.
+
+**Deliverable**: `docs/ai-model-research.md` (already completed)
+
+**Research covers**:
+- Free-tier AI APIs: OpenAI, Anthropic Claude, Google Gemini, Groq, Together AI, Mistral, Cohere
+- Open-source model recommendations (5+): Llama 3.x, Mistral/Mixtral, Phi-3.5, Qwen 2.5, Gemma 2
+- Setup steps, usage limits, quality comparison for each
+- Pricing tiers comparison table
+- Final recommendation for Query's use case: Groq (Llama 3.1 8B) as primary, Gemini Flash-Lite as fallback
+- Cost projections showing 20x savings vs current Claude Haiku setup
+
+**Focus areas**: Text analysis, clustering, summarization capabilities, latency for real-time use
+
+**Estimated complexity**: N/A (documentation only)
+
+---
+
+### Sprint 7 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Free-tier AI model research (7.5) | Done | Research informs implementation decisions |
+| 2 | AI model selection & integration (7.3) | 4-5 hrs | Provider abstraction needed before auth changes |
+| 3 | Database auth integration (7.2) | 2-3 hrs | DB changes needed before auth UI |
+| 4 | Host authentication (7.1) | 4-5 hrs | Depends on DB auth integration |
+| 5 | AI summary question per cluster (7.4) | 2-3 hrs | Uses new provider abstraction from 7.3 |
+
+**Total Sprint 7 estimate**: ~12-16 hrs of implementation
+
+---
+
+### Sprint 7 Database Changes
+
+```sql
+-- Host authentication
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
+
+-- RLS policies for session ownership
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own sessions"
+  ON sessions FOR SELECT USING (auth.uid() = user_id OR true);
+
+CREATE POLICY "Users can create sessions"
+  ON sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own sessions"
+  ON sessions FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own sessions"
+  ON sessions FOR DELETE USING (auth.uid() = user_id);
+
+-- Summary question edit tracking
+ALTER TABLE clusters ADD COLUMN IF NOT EXISTS summary_edited boolean NOT NULL DEFAULT false;
+```
+
+---
+
+### Sprint 7 Files
+
+**New files**:
+```
+app/login/page.tsx                 # Login page
+app/signup/page.tsx                # Signup page
+middleware.ts                      # Auth middleware for protected routes
+lib/auth.ts                        # Auth helper functions
+lib/ai-provider.ts                 # Provider abstraction layer
+lib/providers/groq.ts              # Groq provider implementation
+lib/providers/anthropic.ts         # Anthropic provider (refactored)
+lib/providers/gemini.ts            # Gemini provider implementation
+lib/providers/openai.ts            # OpenAI provider implementation
+supabase-add-auth.sql              # Auth migration SQL
+docs/ai-model-research.md          # AI model research (completed)
+```
+
+**Modified files**:
+```
+app/session/[code]/page.tsx        # Verify ownership, inline edit summary question
+app/join/[code]/page.tsx           # Show summary question in Topics tab
+app/api/cluster/route.ts           # Use new provider abstraction
+app/analytics/page.tsx             # Filter by authenticated user
+app/report/[code]/page.tsx         # Verify ownership
+components/Sidebar.tsx             # Filter sessions by user, show auth state
+lib/supabase.ts                    # Updated types (Session.user_id, Cluster.summary_edited)
+supabase-schema.sql                # Updated schema
+.env.example                       # Document new AI provider env vars
+```
+
+---
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)

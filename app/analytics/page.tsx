@@ -9,8 +9,12 @@ export default function AnalyticsPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSidebarOpen(window.innerWidth >= 768)
+  }, [])
   const [aiLoading, setAiLoading] = useState(false)
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
 
@@ -156,8 +160,10 @@ export default function AnalyticsPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar backdrop (mobile) */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />}
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200`}>
+        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200 fixed sm:relative z-20 sm:z-auto h-[calc(100vh-48px)] sm:h-auto`}>
           <div className="p-4 space-y-6 w-64">
             {liveSessions.length > 0 && (
               <div className="space-y-1.5">
@@ -254,6 +260,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </aside>
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-10 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">

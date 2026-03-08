@@ -16,8 +16,12 @@ export default function ReportPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [faqs, setFaqs] = useState<FaqEntry[]>([])
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [allSessions, setAllSessions] = useState<Session[]>([])
+
+  useEffect(() => {
+    setSidebarOpen(window.innerWidth >= 768)
+  }, [])
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -139,7 +143,9 @@ export default function ReportPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200`}>
+        {/* Sidebar backdrop (mobile) */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200 fixed sm:relative z-20 sm:z-auto h-[calc(100vh-48px)] sm:h-auto`}>
           <div className="p-4 space-y-6 w-64">
             {liveSessions.length > 0 && (
               <div className="space-y-1.5">
@@ -242,6 +248,12 @@ export default function ReportPage() {
             </div>
           </div>
         </aside>
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-10 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
