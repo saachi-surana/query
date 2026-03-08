@@ -62,7 +62,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## How It Works
+## Navigating Query
 
 ### Attendee Flow
 1. Visit the home page, enter the 6-character join code → `/join/[code]`
