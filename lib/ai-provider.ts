@@ -40,25 +40,44 @@ async function anthropicComplete(prompt: string, systemPrompt?: string): Promise
 
 export async function aiComplete(prompt: string, systemPrompt?: string): Promise<string> {
   if (!hasAnyKey()) {
-    throw new Error('No AI provider configured')
+    console.error('aiComplete: No AI provider configured. GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'set' : 'MISSING', 'ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'MISSING')
+    throw new Error('No AI provider configured. Set GEMINI_API_KEY or ANTHROPIC_API_KEY in your environment variables.')
   }
 
   const provider = getProvider()
+  console.log('aiComplete: Using provider:', provider)
 
   if (provider === 'gemini') {
     try {
-      return await geminiComplete(prompt, systemPrompt)
+      const result = await geminiComplete(prompt, systemPrompt)
+      console.log('aiComplete: Gemini returned', result.length, 'chars')
+      return result
     } catch (err) {
+      console.error('aiComplete: Gemini failed:', err instanceof Error ? err.message : err)
       // If Anthropic key is available, fall back
       const anthropicKey = process.env.ANTHROPIC_API_KEY
       if (anthropicKey && anthropicKey !== 'sk-ant-placeholder') {
-        console.warn('Gemini failed, falling back to Anthropic:', err instanceof Error ? err.message : err)
-        return await anthropicComplete(prompt, systemPrompt)
+        console.warn('aiComplete: Falling back to Anthropic...')
+        try {
+          const result = await anthropicComplete(prompt, systemPrompt)
+          console.log('aiComplete: Anthropic fallback returned', result.length, 'chars')
+          return result
+        } catch (fallbackErr) {
+          console.error('aiComplete: Anthropic fallback also failed:', fallbackErr instanceof Error ? fallbackErr.message : fallbackErr)
+          throw fallbackErr
+        }
       }
       throw err
     }
   }
 
   // Anthropic primary
-  return await anthropicComplete(prompt, systemPrompt)
+  try {
+    const result = await anthropicComplete(prompt, systemPrompt)
+    console.log('aiComplete: Anthropic returned', result.length, 'chars')
+    return result
+  } catch (err) {
+    console.error('aiComplete: Anthropic failed:', err instanceof Error ? err.message : err)
+    throw err
+  }
 }

@@ -78,9 +78,10 @@ export async function clusterQuestion(
   existingClusters: Pick<Cluster, 'id' | 'title' | 'summary_question'>[],
   sessionId: string,
   sessionDescription: string | null
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   if (hasNoAIProvider()) {
-    return
+    console.warn('Clustering: No AI provider configured — skipping clustering for question', questionId)
+    return { success: false, error: 'No AI provider configured' }
   }
 
   try {
@@ -108,10 +109,14 @@ If it needs a new cluster respond with:
 
 JSON only. No explanation. No markdown.`
 
+    console.log('Clustering: Calling AI for question', questionId, '— existing clusters:', existingClusters.length)
+
     const rawText = (await aiComplete(
       userPrompt,
       'You are organizing questions from a live Q&A session into topic clusters. Be concise. Respond only with valid JSON.'
     )).trim()
+
+    console.log('Clustering: AI response for question', questionId, ':', rawText.slice(0, 300))
 
     let parsed: {
       action: 'add_to_existing' | 'create_new'
@@ -124,23 +129,33 @@ JSON only. No explanation. No markdown.`
       // Strip markdown code fences if present
       const jsonText = rawText.replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim()
       parsed = JSON.parse(jsonText)
-    } catch {
+    } catch (parseErr) {
       // JSON parse failed — leave question unclustered
-      console.warn('Clustering: JSON parse failed for response:', rawText.slice(0, 200))
-      return
+      console.error('Clustering: JSON parse failed for question', questionId, '— response:', rawText.slice(0, 500), '— error:', parseErr)
+      return { success: false, error: `JSON parse failed: ${rawText.slice(0, 200)}` }
     }
 
     if (parsed.action === 'add_to_existing' && parsed.cluster_id) {
       // Verify the cluster exists
       const exists = existingClusters.find((c) => c.id === parsed.cluster_id)
-      if (!exists) return
+      if (!exists) {
+        console.warn('Clustering: AI suggested cluster_id', parsed.cluster_id, 'but it does not exist in candidates for question', questionId)
+        return { success: false, error: `Cluster ${parsed.cluster_id} not found in candidates` }
+      }
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from('questions')
         .update({ cluster_id: parsed.cluster_id })
         .eq('id', questionId)
 
+      if (updateErr) {
+        console.error('Clustering: Failed to update question', questionId, 'cluster_id:', updateErr)
+        return { success: false, error: `DB update failed: ${updateErr.message}` }
+      }
+
+      console.log('Clustering: Question', questionId, 'added to existing cluster', parsed.cluster_id)
       await updateClusterSummary(parsed.cluster_id)
+      return { success: true }
     } else if (
       parsed.action === 'create_new' &&
       parsed.cluster_title &&
@@ -157,17 +172,30 @@ JSON only. No explanation. No markdown.`
         .select('id')
         .single()
 
-      if (error || !newCluster) return
+      if (error || !newCluster) {
+        console.error('Clustering: Failed to create new cluster for question', questionId, ':', error)
+        return { success: false, error: `Cluster insert failed: ${error?.message}` }
+      }
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from('questions')
         .update({ cluster_id: newCluster.id })
         .eq('id', questionId)
+
+      if (updateErr) {
+        console.error('Clustering: Created cluster', newCluster.id, 'but failed to assign question', questionId, ':', updateErr)
+        return { success: false, error: `Question update failed: ${updateErr.message}` }
+      }
+
+      console.log('Clustering: Created new cluster', newCluster.id, 'for question', questionId, '— title:', parsed.cluster_title)
+      return { success: true }
+    } else {
+      console.warn('Clustering: AI returned unrecognized action for question', questionId, ':', JSON.stringify(parsed))
+      return { success: false, error: `Unrecognized AI response: ${JSON.stringify(parsed)}` }
     }
   } catch (err) {
-    // Any error — leave question unclustered silently
-    console.error('Clustering error:', err instanceof Error ? err.message : err)
-    return
+    console.error('Clustering error for question', questionId, ':', err instanceof Error ? err.stack || err.message : err)
+    return { success: false, error: `Exception: ${err instanceof Error ? err.message : String(err)}` }
   }
 }
 
@@ -194,8 +222,8 @@ export async function updateClusterSummary(clusterId: string): Promise<void> {
         .update({ summary_question: summary })
         .eq('id', clusterId)
     }
-  } catch {
-    // Silently fail
+  } catch (err) {
+    console.error('updateClusterSummary: Failed for cluster', clusterId, ':', err instanceof Error ? err.message : err)
   }
 }
 
@@ -209,11 +237,12 @@ export async function batchClusterSession(
   sessionDescription: string | null
 ): Promise<{ clustered: number; newClusters: number; merged: number }> {
   if (hasNoAIProvider()) {
+    console.warn('batchClusterSession: No AI provider configured — skipping')
     return { clustered: 0, newClusters: 0, merged: 0 }
   }
 
   // Fetch all approved unclustered questions
-  const { data: unclusteredQuestions } = await supabase
+  const { data: unclusteredQuestions, error: fetchErr } = await supabase
     .from('questions')
     .select('id, text')
     .eq('session_id', sessionId)
@@ -221,9 +250,16 @@ export async function batchClusterSession(
     .is('cluster_id', null)
     .order('created_at', { ascending: true })
 
+  if (fetchErr) {
+    console.error('batchClusterSession: Failed to fetch unclustered questions:', fetchErr)
+  }
+
   if (!unclusteredQuestions || unclusteredQuestions.length === 0) {
+    console.log('batchClusterSession: No unclustered approved questions found for session', sessionId)
     return { clustered: 0, newClusters: 0, merged: 0 }
   }
+
+  console.log('batchClusterSession: Found', unclusteredQuestions.length, 'unclustered questions for session', sessionId)
 
   // Fetch existing unanswered clusters with their questions for context
   const { data: existingClusters } = await supabase
@@ -413,7 +449,7 @@ export async function cleanupEmptyClusters(sessionId: string): Promise<number> {
       .select('id', { count: 'exact', head: true })
       .eq('cluster_id', cluster.id)
 
-    if (count === 0) {
+    if (count === 0 || count === null) {
       await supabase.from('clusters').delete().eq('id', cluster.id)
       removed++
     }
