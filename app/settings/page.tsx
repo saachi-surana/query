@@ -99,7 +99,6 @@ export default function SettingsPage() {
   const [logoPreview, setLogoPreview] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const [applyingToExisting, setApplyingToExisting] = useState(false)
-  const [brandingSaved, setBrandingSaved] = useState(false)
   const [appliedToExisting, setAppliedToExisting] = useState(false)
   const [brandingError, setBrandingError] = useState('')
 
@@ -178,7 +177,17 @@ export default function SettingsPage() {
     { color: '#14B8A6', label: 'Teal' },
   ]
 
-  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  // Auto-save brand color to localStorage on every change
+  function handleBrandColorChange(color: string) {
+    setDefaultBrandColor(color)
+    if (color) {
+      localStorage.setItem('query-default-brand-color', color)
+    } else {
+      localStorage.removeItem('query-default-brand-color')
+    }
+  }
+
+  async function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) {
@@ -186,10 +195,24 @@ export default function SettingsPage() {
       return
     }
     setBrandingError('')
-    setLogoFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setLogoPreview(reader.result as string)
-    reader.readAsDataURL(file)
+
+    // Auto-upload immediately
+    setLogoUploading(true)
+    const ext = file.name.split('.').pop() || 'png'
+    const path = `defaults/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('logos').upload(path, file)
+    if (uploadError) {
+      setBrandingError('Failed to upload logo. Please try again.')
+      setLogoUploading(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
+    const url = urlData.publicUrl
+    setDefaultLogoUrl(url)
+    setLogoPreview(url)
+    setLogoFile(null)
+    localStorage.setItem('query-default-logo-url', url)
+    setLogoUploading(false)
   }
 
   function removeLogo() {
@@ -199,46 +222,20 @@ export default function SettingsPage() {
     localStorage.removeItem('query-default-logo-url')
   }
 
-  async function handleSaveBranding() {
-    setLogoUploading(true)
-    setBrandingSaved(false)
-    let finalLogoUrl = defaultLogoUrl
-
-    // Upload new logo if selected
-    if (logoFile) {
-      const ext = logoFile.name.split('.').pop() || 'png'
-      const path = `defaults/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('logos').upload(path, logoFile)
-      if (uploadError) {
-        setBrandingError('Failed to upload logo. Please try again.')
-        setLogoUploading(false)
-        return
-      }
-      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
-      finalLogoUrl = urlData.publicUrl
-      setDefaultLogoUrl(finalLogoUrl)
-      setLogoFile(null)
-    }
-
-    // Save to localStorage
-    if (finalLogoUrl) {
-      localStorage.setItem('query-default-logo-url', finalLogoUrl)
-    } else {
-      localStorage.removeItem('query-default-logo-url')
-    }
-
+  async function handleApplyToExisting() {
+    // First ensure branding is saved to localStorage
     if (defaultBrandColor) {
       localStorage.setItem('query-default-brand-color', defaultBrandColor)
     } else {
       localStorage.removeItem('query-default-brand-color')
     }
+    if (defaultLogoUrl) {
+      localStorage.setItem('query-default-logo-url', defaultLogoUrl)
+    } else {
+      localStorage.removeItem('query-default-logo-url')
+    }
 
-    setLogoUploading(false)
-    setBrandingSaved(true)
-    setTimeout(() => setBrandingSaved(false), 2000)
-  }
-
-  async function handleApplyToExisting() {
+    // Apply to current & upcoming sessions only (not past/ended ones)
     setApplyingToExisting(true)
     const updates: Record<string, string | null> = {
       logo_url: defaultLogoUrl || null,
@@ -246,7 +243,7 @@ export default function SettingsPage() {
     }
     const user = await getUser()
     if (user) {
-      await supabase.from('sessions').update(updates).eq('user_id', user.id)
+      await supabase.from('sessions').update(updates).eq('user_id', user.id).is('ended_at', null)
     }
     setApplyingToExisting(false)
     setAppliedToExisting(true)
@@ -359,153 +356,147 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Default Branding Section */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-slate-900">Default Branding</h2>
-              <p className="text-sm text-slate-500">Set a default logo and brand color for new sessions. You can also apply it to all existing sessions.</p>
+            {/* Appearance Section — merged dashboard theme + session branding */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
+              <h2 className="text-lg font-semibold text-slate-900">Appearance</h2>
 
-              {/* Logo upload */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Logo</label>
-                {logoPreview ? (
-                  <div className="flex items-center gap-4">
-                    <img src={logoPreview} alt="Logo preview" className="h-12 max-w-[160px] object-contain rounded-lg border border-slate-200 p-1.5 bg-white" />
+              {/* Subsection: Dashboard Theme */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Dashboard Theme</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Changes the color of your host dashboard, sidebar, and headers. Only you see this.</p>
+                </div>
+                <div className="flex items-start gap-6">
+                  {themeOptions.map((opt) => (
                     <button
-                      onClick={removeLogo}
-                      className="text-sm text-red-500 hover:text-red-700 font-medium transition-colors"
+                      key={opt.name}
+                      onClick={() => handleThemeChange(opt.name)}
+                      className="flex flex-col items-center gap-2 group w-16"
+                      title={opt.label}
                     >
-                      Remove
+                      <div
+                        className={`w-8 h-8 rounded-full transition-all ${
+                          activeTheme === opt.name ? 'ring-2 ring-offset-2' : 'hover:scale-110'
+                        }`}
+                        style={{
+                          backgroundColor: opt.color,
+                          boxShadow: activeTheme === opt.name ? `0 0 0 2px white, 0 0 0 4px ${opt.color}` : undefined,
+                        }}
+                      />
+                      <div className="flex flex-col items-center">
+                        <span className={`text-xs font-medium ${activeTheme === opt.name ? 'text-slate-900' : 'text-slate-400'}`}>
+                          {opt.label}
+                        </span>
+                        {opt.isDefault && <span className="text-[10px] text-slate-400">Default</span>}
+                      </div>
                     </button>
-                  </div>
-                ) : (
-                  <label className="flex items-center justify-center w-full h-20 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors bg-slate-50">
-                    <div className="text-center">
-                      <p className="text-sm text-slate-500">Click to upload logo</p>
-                      <p className="text-xs text-slate-400">PNG, JPG, SVG, WebP (max 2 MB)</p>
-                    </div>
-                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoSelect} className="hidden" />
-                  </label>
-                )}
-              </div>
-
-              {/* Brand color */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Brand Color</label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* No color / reset option */}
-                  <button
-                    onClick={() => setDefaultBrandColor('')}
-                    className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
-                      !defaultBrandColor ? 'border-slate-400 ring-2 ring-offset-1 ring-slate-400' : 'border-slate-200 hover:scale-110'
-                    }`}
-                    title="None (use theme default)"
-                  >
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  {brandColorPresets.map((preset) => (
-                    <button
-                      key={preset.color}
-                      onClick={() => setDefaultBrandColor(preset.color)}
-                      className={`w-7 h-7 rounded-full transition-all ${
-                        defaultBrandColor === preset.color ? 'ring-2 ring-offset-1' : 'hover:scale-110'
-                      }`}
-                      style={{
-                        backgroundColor: preset.color,
-                        boxShadow: defaultBrandColor === preset.color ? `0 0 0 1px white, 0 0 0 3px ${preset.color}` : undefined,
-                      }}
-                      title={preset.label}
-                    />
                   ))}
                 </div>
-                {/* Custom hex */}
-                <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={defaultBrandColor}
-                    onChange={(e) => setDefaultBrandColor(e.target.value)}
-                    placeholder="#hex or empty for default"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
-                  />
-                  {defaultBrandColor && (
-                    <div className="w-8 h-8 rounded-lg border border-slate-200 shrink-0" style={{ backgroundColor: defaultBrandColor }} />
+              </div>
+
+              <hr className="border-slate-100" />
+
+              {/* Subsection: Session Branding */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Session Branding</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Logo and accent color shown to attendees on join, present, and session pages. Changes save automatically.</p>
+                </div>
+
+                {/* Logo upload */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Logo</label>
+                  {logoPreview ? (
+                    <div className="flex items-center gap-4">
+                      <img src={logoPreview} alt="Logo preview" className="h-12 max-w-[160px] object-contain rounded-lg border border-slate-200 p-1.5 bg-white" />
+                      {logoUploading && <span className="text-xs text-slate-400 animate-pulse">Uploading...</span>}
+                      <button onClick={removeLogo} className="text-sm text-red-500 hover:text-red-700 font-medium transition-colors">Remove</button>
+                    </div>
+                  ) : (
+                    <label className={`flex items-center justify-center w-full h-20 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-colors bg-slate-50 ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="text-center">
+                        {logoUploading ? (
+                          <p className="text-sm text-slate-400 animate-pulse">Uploading...</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-slate-500">Click to upload logo</p>
+                            <p className="text-xs text-slate-400">PNG, JPG, SVG, WebP (max 2 MB)</p>
+                          </>
+                        )}
+                      </div>
+                      <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoSelect} className="hidden" disabled={logoUploading} />
+                    </label>
                   )}
                 </div>
-              </div>
 
-              {/* Error message */}
-              {brandingError && (
-                <p className="text-sm text-red-600">{brandingError}</p>
-              )}
-
-              {/* Success message */}
-              {appliedToExisting && (
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-sm text-emerald-700">Branding applied to all your existing sessions.</p>
-                </div>
-              )}
-
-              {/* Save + Apply buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={handleSaveBranding}
-                  disabled={logoUploading}
-                  className="px-5 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
-                >
-                  {logoUploading ? 'Uploading...' : brandingSaved ? 'Saved!' : 'Save Defaults'}
-                </button>
-                <button
-                  onClick={handleApplyToExisting}
-                  disabled={applyingToExisting}
-                  className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
-                >
-                  {applyingToExisting ? 'Applying...' : appliedToExisting ? 'Applied!' : 'Apply to All Existing Sessions'}
-                </button>
-              </div>
-            </div>
-
-            {/* Appearance Section */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-slate-900">Appearance</h2>
-              <p className="text-sm text-slate-500">Choose a theme color for the interface.</p>
-
-              <div className="flex items-start gap-6">
-                {themeOptions.map((opt) => (
-                  <button
-                    key={opt.name}
-                    onClick={() => handleThemeChange(opt.name)}
-                    className="flex flex-col items-center gap-2 group w-16"
-                    title={opt.label}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full transition-all ${
-                        activeTheme === opt.name
-                          ? 'ring-2 ring-offset-2'
-                          : 'hover:scale-110'
+                {/* Brand color */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide">Accent Color</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => handleBrandColorChange('')}
+                      className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${
+                        !defaultBrandColor ? 'border-slate-400 ring-2 ring-offset-1 ring-slate-400' : 'border-slate-200 hover:scale-110'
                       }`}
-                      style={{
-                        backgroundColor: opt.color,
-                        boxShadow: activeTheme === opt.name
-                          ? `0 0 0 2px white, 0 0 0 4px ${opt.color}`
-                          : undefined,
-                      }}
+                      title="None (use theme default)"
+                    >
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    {brandColorPresets.map((preset) => (
+                      <button
+                        key={preset.color}
+                        onClick={() => handleBrandColorChange(preset.color)}
+                        className={`w-7 h-7 rounded-full transition-all ${
+                          defaultBrandColor === preset.color ? 'ring-2 ring-offset-1' : 'hover:scale-110'
+                        }`}
+                        style={{
+                          backgroundColor: preset.color,
+                          boxShadow: defaultBrandColor === preset.color ? `0 0 0 1px white, 0 0 0 3px ${preset.color}` : undefined,
+                        }}
+                        title={preset.label}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={defaultBrandColor}
+                      onChange={(e) => handleBrandColorChange(e.target.value)}
+                      placeholder="#hex or empty for default"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent"
                     />
-                    <div className="flex flex-col items-center">
-                      <span className={`text-xs font-medium ${
-                        activeTheme === opt.name ? 'text-slate-900' : 'text-slate-400'
-                      }`}>
-                        {opt.label}
-                      </span>
-                      {opt.isDefault && (
-                        <span className="text-[10px] text-slate-400">Default</span>
-                      )}
-                    </div>
+                    {defaultBrandColor && (
+                      <div className="w-8 h-8 rounded-lg border border-slate-200 shrink-0" style={{ backgroundColor: defaultBrandColor }} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Error */}
+                {brandingError && <p className="text-sm text-red-600">{brandingError}</p>}
+
+                {/* Success */}
+                {appliedToExisting && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-sm text-emerald-700">Branding applied to all current and upcoming sessions.</p>
+                  </div>
+                )}
+
+                {/* Action button */}
+                <div className="pt-1">
+                  <p className="text-xs text-slate-400 mb-2">Branding is automatically saved for future sessions. To update sessions you've already created:</p>
+                  <button
+                    onClick={handleApplyToExisting}
+                    disabled={applyingToExisting}
+                    className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                  >
+                    {applyingToExisting ? 'Applying...' : appliedToExisting ? 'Applied!' : 'Apply to All Current & Upcoming Sessions'}
                   </button>
-                ))}
+                </div>
               </div>
             </div>
           </div>
