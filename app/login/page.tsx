@@ -35,7 +35,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push(redirect || '/')
+    router.push(redirect || '/analytics')
   }
 
   const inputClasses = 'w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors'

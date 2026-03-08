@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -10,6 +10,13 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [joining, setJoining] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+    })
+  }, [])
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault()
@@ -71,16 +78,36 @@ export default function HomePage() {
         <div className="space-y-4">
           {/* Host */}
           <div className="rounded-2xl bg-white p-6 space-y-4 shadow-2xl" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)' }}>
-            <div>
-              <h2 className="font-semibold text-slate-900 text-lg">Host a Session</h2>
-              <p className="text-sm text-slate-500 mt-0.5">Create a live Q&amp;A with AI topic clustering.</p>
-            </div>
-            <button
-              onClick={() => router.push('/create')}
-              className="w-full py-3 px-4 bg-theme-primary text-white rounded-xl font-medium hover:bg-theme-primary-hover transition-colors shadow-lg"
-            >
-              Get Started
-            </button>
+            {user ? (
+              <>
+                <div>
+                  <h2 className="font-semibold text-slate-900 text-lg">Welcome back</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Manage your sessions and analytics.</p>
+                </div>
+                <button
+                  onClick={() => router.push('/analytics')}
+                  className="w-full py-3 px-4 bg-theme-primary text-white rounded-xl font-medium hover:bg-theme-primary-hover transition-colors shadow-lg"
+                >
+                  My Dashboard
+                </button>
+                <a href="/create" className="block text-center text-sm text-theme-primary hover:text-theme-primary-hover font-medium transition-colors">
+                  + Create New Session
+                </a>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="font-semibold text-slate-900 text-lg">Host a Session</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Create a live Q&amp;A with AI topic clustering.</p>
+                </div>
+                <button
+                  onClick={() => router.push('/create')}
+                  className="w-full py-3 px-4 bg-theme-primary text-white rounded-xl font-medium hover:bg-theme-primary-hover transition-colors shadow-lg"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
 
           {/* Divider */}
