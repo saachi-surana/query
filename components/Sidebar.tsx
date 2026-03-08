@@ -9,7 +9,7 @@ export interface SidebarProps {
   currentCode?: string  // to highlight active session
   expandedSeries: Set<string>
   setExpandedSeries: React.Dispatch<React.SetStateAction<Set<string>>>
-  activePage?: 'session' | 'analytics' | 'report'
+  activePage?: 'session' | 'analytics' | 'report' | 'settings'
 }
 
 export function Sidebar({
@@ -175,7 +175,16 @@ export function Sidebar({
               Analytics
             </a>
             <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Profile (coming soon)</div>
-            <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Settings (coming soon)</div>
+            <a
+              href="/settings"
+              className={`block px-3 py-2.5 rounded-lg text-[0.9375rem] font-medium transition-colors ${
+                activePage === 'settings'
+                  ? 'bg-theme-sidebar-active-bg text-theme-sidebar-active-text font-semibold'
+                  : 'text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg'
+              }`}
+            >
+              Settings
+            </a>
           </div>
         </div>
       </aside>
