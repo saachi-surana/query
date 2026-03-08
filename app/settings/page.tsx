@@ -100,6 +100,8 @@ export default function SettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [applyingToExisting, setApplyingToExisting] = useState(false)
   const [brandingSaved, setBrandingSaved] = useState(false)
+  const [appliedToExisting, setAppliedToExisting] = useState(false)
+  const [brandingError, setBrandingError] = useState('')
 
   // Theme
   const [activeTheme, setActiveTheme] = useState<ThemeName>('orange')
@@ -180,9 +182,10 @@ export default function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) {
-      alert('Logo must be under 2 MB.')
+      setBrandingError('Logo must be under 2 MB.')
       return
     }
+    setBrandingError('')
     setLogoFile(file)
     const reader = new FileReader()
     reader.onload = () => setLogoPreview(reader.result as string)
@@ -207,7 +210,7 @@ export default function SettingsPage() {
       const path = `defaults/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
       const { error: uploadError } = await supabase.storage.from('logos').upload(path, logoFile)
       if (uploadError) {
-        alert('Failed to upload logo: ' + uploadError.message)
+        setBrandingError('Failed to upload logo. Please try again.')
         setLogoUploading(false)
         return
       }
@@ -246,7 +249,8 @@ export default function SettingsPage() {
       await supabase.from('sessions').update(updates).eq('user_id', user.id)
     }
     setApplyingToExisting(false)
-    alert('Branding applied to all your existing sessions.')
+    setAppliedToExisting(true)
+    setTimeout(() => setAppliedToExisting(false), 3000)
   }
 
   async function handleSignOut() {
@@ -430,6 +434,21 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Error message */}
+              {brandingError && (
+                <p className="text-sm text-red-600">{brandingError}</p>
+              )}
+
+              {/* Success message */}
+              {appliedToExisting && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <p className="text-sm text-emerald-700">Branding applied to all your existing sessions.</p>
+                </div>
+              )}
+
               {/* Save + Apply buttons */}
               <div className="flex items-center gap-3 pt-2">
                 <button
@@ -444,7 +463,7 @@ export default function SettingsPage() {
                   disabled={applyingToExisting}
                   className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
                 >
-                  {applyingToExisting ? 'Applying...' : 'Apply to All Existing Sessions'}
+                  {applyingToExisting ? 'Applying...' : appliedToExisting ? 'Applied!' : 'Apply to All Existing Sessions'}
                 </button>
               </div>
             </div>
