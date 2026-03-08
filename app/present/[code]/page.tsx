@@ -2,9 +2,54 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase, Session, Question, Cluster } from '@/lib/supabase'
+import { supabase, Session, Question, Cluster, Reply } from '@/lib/supabase'
 
 type ClusterWithQuestions = Cluster & { questions: Question[] }
+
+function PresentQuestionCard({ question, replies }: { question: Question; replies: Reply[] }) {
+  const [showReplies, setShowReplies] = useState(false)
+  const qReplies = replies.filter((r) => r.question_id === question.id)
+
+  return (
+    <div
+      className="rounded-2xl border bg-white p-5 space-y-2"
+      style={{ borderColor: 'var(--theme-primary-light)' }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-lg text-slate-800 leading-relaxed flex-1">{question.text}</p>
+        <div className="shrink-0 flex items-center gap-2">
+          {qReplies.length > 0 && (
+            <button
+              onClick={() => setShowReplies((o) => !o)}
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium transition-colors"
+              style={{ background: showReplies ? 'var(--theme-primary)' : 'var(--theme-primary-subtle)', color: showReplies ? '#fff' : 'var(--theme-primary-hover)' }}
+            >
+              {qReplies.length} repl{qReplies.length === 1 ? 'y' : 'ies'} {showReplies ? '▴' : '▾'}
+            </button>
+          )}
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium bg-slate-100 text-slate-600">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+            {question.upvotes}
+          </span>
+        </div>
+      </div>
+      {showReplies && qReplies.length > 0 && (
+        <div className="pl-4 border-l-2 space-y-1.5 mt-2" style={{ borderColor: 'var(--theme-primary-light)' }}>
+          {qReplies.map((r) => (
+            <div key={r.id}>
+              <p className="text-base text-slate-700">{r.text}</p>
+              <p className="text-xs text-slate-400">
+                <span className={r.is_host ? 'font-semibold' : ''} style={r.is_host ? { color: 'var(--theme-primary)' } : undefined}>
+                  {r.is_host ? '★ Host' : r.author_name || 'Anonymous'}
+                </span>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function PresentPage() {
   const params = useParams()
@@ -14,6 +59,7 @@ export default function PresentPage() {
   const [notFound, setNotFound] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [clusters, setClusters] = useState<Cluster[]>([])
+  const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
 
   const joinUrl =
@@ -34,12 +80,14 @@ export default function PresentPage() {
     if (!session) return
 
     async function loadData() {
-      const [{ data: qs }, { data: cs }] = await Promise.all([
+      const [{ data: qs }, { data: cs }, { data: rs }] = await Promise.all([
         supabase.from('questions').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
         supabase.from('clusters').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
+        supabase.from('replies').select('*').eq('session_id', session!.id).order('created_at', { ascending: true }),
       ])
       setQuestions(qs || [])
       setClusters(cs || [])
+      setReplies(rs || [])
     }
     loadData()
 
@@ -66,6 +114,17 @@ export default function PresentPage() {
           } else if (payload.eventType === 'UPDATE') {
             setClusters((prev) =>
               prev.map((c) => (c.id === (payload.new as Cluster).id ? (payload.new as Cluster) : c))
+            )
+          }
+        }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'replies', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setReplies((prev) => [...prev, payload.new as Reply])
+          } else if (payload.eventType === 'UPDATE') {
+            setReplies((prev) =>
+              prev.map((r) => (r.id === (payload.new as Reply).id ? (payload.new as Reply) : r))
             )
           }
         }
@@ -119,7 +178,7 @@ export default function PresentPage() {
       )}
 
       {/* Mesh gradient header */}
-      <header className="relative overflow-hidden px-6 py-4 shrink-0">
+      <header className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0">
         <div className="absolute inset-0 bg-theme-mesh-base" />
         <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
         <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
@@ -128,17 +187,16 @@ export default function PresentPage() {
 
         <div className="relative flex items-center justify-between">
           {/* Left: branding + session title */}
-          <div className="flex items-center gap-4 min-w-0">
-            <h1 className="text-3xl font-bold text-white shrink-0">Query</h1>
-            <span className="text-white/30 text-2xl font-light shrink-0">/</span>
-            <h2 className="text-xl text-white/80 truncate">{session.title}</h2>
+          <div className="flex items-baseline gap-3 min-w-0">
+            <h1 className="text-2xl font-bold text-white shrink-0 tracking-tight">Query</h1>
+            <span className="text-white/30 text-lg font-light shrink-0">/</span>
+            <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
           </div>
 
-          {/* Right: join code + URL in a prominent bubble */}
-          <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 text-center">
-            <p className="text-xs text-white/70 uppercase tracking-wider font-medium mb-1">Join at</p>
-            <p className="font-mono text-3xl font-bold tracking-[0.15em] text-white">{code}</p>
-            <p className="text-sm text-white/60 font-mono mt-0.5">{joinUrl}</p>
+          {/* Right: join code + URL — Kahoot-style prominent */}
+          <div className="shrink-0 bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-2.5 text-center">
+            <p className="text-[10px] text-white/60 uppercase tracking-widest font-semibold">Join at <span className="text-white/90">{typeof window !== 'undefined' ? window.location.host : ''}/join</span></p>
+            <p className="font-mono text-4xl font-bold tracking-[0.2em] text-white leading-tight">{code}</p>
           </div>
         </div>
       </header>
@@ -190,6 +248,11 @@ export default function PresentPage() {
                       </span>
                     </div>
                   </div>
+                  <div className="mt-4 space-y-2">
+                    {highlightedCluster.questions.sort((a, b) => b.upvotes - a.upvotes).map((q) => (
+                      <PresentQuestionCard key={q.id} question={q} replies={replies} />
+                    ))}
+                  </div>
                 </div>
               )
             })()}
@@ -217,20 +280,30 @@ export default function PresentPage() {
                       </span>
                     </div>
                   </div>
+                  <div className="mt-4 space-y-2">
+                    {c.questions.sort((a, b) => b.upvotes - a.upvotes).map((q) => (
+                      <PresentQuestionCard key={q.id} question={q} replies={replies} />
+                    ))}
+                  </div>
                 </div>
               )
             })}
 
-            {/* Unclustered count */}
+            {/* Unclustered questions — shown individually */}
             {(() => {
-              const unclustered = approvedQuestions.filter((q) => !q.cluster_id && q.status !== 'answered')
+              const unclustered = approvedQuestions
+                .filter((q) => !q.cluster_id && q.status !== 'answered')
+                .sort((a, b) => b.upvotes - a.upvotes)
               if (unclustered.length === 0) return null
               return (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
-                  <p className="text-sm text-slate-400">
-                    + {unclustered.length} question{unclustered.length !== 1 ? 's' : ''} being categorized...
-                  </p>
-                </div>
+                <>
+                  {unclustered.length > 0 && unansweredClusters.length > 0 && (
+                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider pt-2">Recent Questions</p>
+                  )}
+                  {unclustered.map((q) => (
+                    <PresentQuestionCard key={q.id} question={q} replies={replies} />
+                  ))}
+                </>
               )
             })()}
           </div>
