@@ -1,13 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { supabase, Cluster } from './supabase'
+import { aiComplete, getProvider } from './ai-provider'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
-
-function isPlaceholderKey(): boolean {
-  const key = process.env.ANTHROPIC_API_KEY
-  return !key || key === 'sk-ant-placeholder'
+function hasNoAIProvider(): boolean {
+  const geminiKey = process.env.GEMINI_API_KEY
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  const hasGemini = !!geminiKey && geminiKey !== ''
+  const hasAnthropic = !!anthropicKey && anthropicKey !== 'sk-ant-placeholder'
+  return !hasGemini && !hasAnthropic
 }
 
 export async function clusterQuestion(
@@ -17,7 +16,7 @@ export async function clusterQuestion(
   sessionId: string,
   sessionDescription: string | null
 ): Promise<void> {
-  if (isPlaceholderKey()) {
+  if (hasNoAIProvider()) {
     return
   }
 
@@ -46,16 +45,10 @@ If it needs a new cluster respond with:
 
 JSON only. No explanation. No markdown.`
 
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      system:
-        'You are organizing questions from a live Q&A session into topic clusters. Be concise. Respond only with valid JSON.',
-      messages: [{ role: 'user', content: userPrompt }],
-    })
-
-    const rawText =
-      message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+    const rawText = (await aiComplete(
+      userPrompt,
+      'You are organizing questions from a live Q&A session into topic clusters. Be concise. Respond only with valid JSON.'
+    )).trim()
 
     let parsed: {
       action: 'add_to_existing' | 'create_new'
@@ -114,7 +107,7 @@ JSON only. No explanation. No markdown.`
 }
 
 export async function updateClusterSummary(clusterId: string): Promise<void> {
-  if (isPlaceholderKey()) return
+  if (hasNoAIProvider()) return
 
   try {
     const { data: questions } = await supabase
@@ -126,19 +119,9 @@ export async function updateClusterSummary(clusterId: string): Promise<void> {
 
     const questionList = questions.map((q, i) => `${i + 1}. ${q.text}`).join('\n')
 
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 128,
-      messages: [
-        {
-          role: 'user',
-          content: `Given these questions from a live Q&A:\n${questionList}\n\nWrite one clear summary question that captures the core theme across all of them. Return only the question, no explanation.`,
-        },
-      ],
-    })
-
-    const summary =
-      message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+    const summary = (await aiComplete(
+      `Given these questions from a live Q&A:\n${questionList}\n\nWrite one clear summary question that captures the core theme across all of them. Return only the question, no explanation.`
+    )).trim()
 
     if (summary) {
       await supabase
