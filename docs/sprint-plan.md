@@ -774,7 +774,27 @@ CREATE TRIGGER on_host_reply_mark_answered
 
 ---
 
-### 6.5 Mobile Responsiveness Pass
+### 6.5 Header Cleanup: Share Button + Present Mode
+**Priority**: High — header is cluttered, present mode is buried
+
+**What to do**:
+- Remove "Copy Code" and "Copy Link" buttons from session header
+- Keep the session code badge visible with a small copy icon (clipboard) next to it
+- Clicking the copy icon copies the full join URL (e.g. `https://query.app/join/ABC123`)
+- Add a "Present" button in the top-right of the header (opens `/present/[code]` in new tab)
+- Remove the present mode link from the settings panel
+- Inspired by Slido: single share action, prominent present button
+
+**Reference (Slido UX)**:
+- Slido has a single "Share" button (top-right) → copies join link
+- Present button is prominent (green, opens new tab)
+- No separate copy code vs copy link
+
+**Files**: `app/session/[code]/page.tsx`
+
+---
+
+### 6.6 Mobile Responsiveness Pass
 **Priority**: Medium — attendees are primarily on phones
 
 **What to do**:

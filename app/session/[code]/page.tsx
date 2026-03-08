@@ -702,25 +702,32 @@ export default function ModeratorPage() {
             <h1 className="text-lg font-medium truncate" style={{ color: 'var(--theme-header-text-muted)' }}>{session.title}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden sm:inline font-mono text-sm font-semibold px-2.5 py-1 rounded-lg" style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}>
-              {code}
-            </span>
-            <button
-              onClick={copyCode}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" style={{ color: 'var(--theme-header-btn-text)', border: '1px solid var(--theme-header-btn-border)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-header-btn-hover-bg)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            >
-              {codeCopied ? '✓ Copied!' : '⎘ Copy Code'}
-            </button>
+            {/* Code badge + copy icon */}
             <button
               onClick={copyLink}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" style={{ color: 'var(--theme-header-btn-text)', border: '1px solid var(--theme-header-btn-border)' }}
+              title="Copy join link"
+              className="hidden sm:flex items-center gap-1.5 font-mono text-sm font-semibold px-2.5 py-1 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}
+            >
+              {code}
+              {copied ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              )}
+            </button>
+            {/* Present mode */}
+            <a
+              href={`/present/${code}`}
+              target="_blank"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{ color: 'var(--theme-header-btn-text)', border: '1px solid var(--theme-header-btn-border)' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-header-btn-hover-bg)' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
-              {copied ? '✓ Copied!' : '⎘ Copy Link'}
-            </button>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              Present
+            </a>
             {session.ended_at ? (
               <button
                 onClick={reopenSession}
@@ -1319,13 +1326,6 @@ export default function ModeratorPage() {
                 className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors"
               >
                 View Report
-              </a>
-              <a
-                href={`/present/${code}`}
-                target="_blank"
-                className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors"
-              >
-                Present Mode
               </a>
             </div>
           </div>
