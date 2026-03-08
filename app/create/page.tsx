@@ -117,23 +117,36 @@ export default function CreatePage() {
   const inputClasses = 'w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors'
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg space-y-8">
-        <div className="space-y-1">
-          <a href="/" className="text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity">
-            Query
-          </a>
-          <h2 className="text-2xl font-semibold text-slate-900 pt-2">Host a Session</h2>
-          <p className="text-sm text-slate-500">Set up your live Q&amp;A session.</p>
+    <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      {/* Header */}
+      <header className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20">
+        <div className="absolute inset-0 bg-theme-mesh-base" />
+        <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
+        <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
+        <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
+        <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
+        <div className="relative flex items-baseline gap-3">
+          <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity tracking-tight">Query</a>
+          <span className="text-white/30 text-lg font-light select-none">/</span>
+          <span className="text-lg font-medium" style={{ color: 'var(--theme-header-text-muted)' }}>Host a Session</span>
         </div>
+      </header>
 
-        {error && (
-          <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
-            {error}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-4 py-8 space-y-8">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-semibold text-slate-900">Host a Session</h2>
+            <p className="text-sm text-slate-500">Set up your live Q&amp;A session.</p>
           </div>
-        )}
 
-        <form onSubmit={handleCreate} className="space-y-6">
+          {error && (
+            <div className="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleCreate} className="space-y-6">
           {/* Title */}
           <div className="space-y-1.5">
             <label htmlFor="title" className="block text-sm font-medium text-slate-700">
@@ -304,6 +317,7 @@ export default function CreatePage() {
             {loading ? 'Creating...' : recurrence !== 'none' ? 'Create Recurring Sessions' : 'Create Session'}
           </button>
         </form>
+        </div>
       </div>
     </main>
   )

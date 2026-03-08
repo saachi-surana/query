@@ -124,11 +124,11 @@ export default function PresentPage() {
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-gray-500">Questions</span>
-            <span className="font-mono font-bold text-blue-400 text-lg">{totalQuestions}</span>
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalQuestions}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-500">Upvotes</span>
-            <span className="font-mono font-bold text-blue-400 text-lg">{totalUpvotes}</span>
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalUpvotes}</span>
           </div>
           <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-3">
             <span className="text-gray-400 text-xs">JOIN</span>
@@ -165,22 +165,29 @@ export default function PresentPage() {
                   key={c.id}
                   className={`rounded-xl border p-6 transition-all ${
                     isHighlighted
-                      ? 'bg-purple-950/50 border-purple-600 ring-1 ring-purple-500'
+                      ? 'ring-1 bg-gray-900/50'
                       : isTop
-                        ? 'bg-blue-950/50 border-blue-800'
+                        ? 'bg-gray-900/50'
                         : 'bg-gray-900/50 border-gray-800'
                   }`}
+                  style={
+                    isHighlighted
+                      ? { borderColor: 'var(--theme-primary)', boxShadow: `0 0 0 1px var(--theme-primary)` }
+                      : isTop
+                        ? { borderColor: 'var(--theme-primary-muted)' }
+                        : undefined
+                  }
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-3">
                         {isHighlighted && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-600 text-white animate-pulse">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white animate-pulse" style={{ background: 'var(--theme-primary)' }}>
                             DISCUSSING NOW
                           </span>
                         )}
                         {isTop && !isHighlighted && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ background: 'var(--theme-primary-muted)' }}>
                             TOP
                           </span>
                         )}
@@ -194,7 +201,7 @@ export default function PresentPage() {
                       <span className="text-xs text-gray-500">Questions</span>
                       <span className="font-mono font-bold text-lg text-white">{c.questions.length}</span>
                       <span className="text-xs text-gray-500">Upvotes</span>
-                      <span className="font-mono font-bold text-lg text-blue-400">{clusterUpvotes}</span>
+                      <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{clusterUpvotes}</span>
                     </div>
                   </div>
                 </div>

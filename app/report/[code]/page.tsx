@@ -64,6 +64,41 @@ export default function ReportPage() {
   const unansweredQuestions = questions.filter((q) => q.status !== 'answered')
   const totalUpvotes = questions.reduce((s, q) => s + q.upvotes, 0)
 
+  function exportCSV() {
+    const escapeCSV = (val: string) => {
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`
+      }
+      return val
+    }
+
+    const header = ['Question', 'Author', 'Upvotes', 'Status', 'Cluster', 'Replies']
+    const rows = questions.map((q) => {
+      const cluster = clusters.find((c) => c.id === q.cluster_id)
+      const questionReplies = replies
+        .filter((r) => r.question_id === q.id)
+        .map((r) => `${r.is_host ? '[Host]' : '[Attendee]'} ${r.author_name || 'Anonymous'}: ${r.text}`)
+        .join(' | ')
+      return [
+        escapeCSV(q.text),
+        escapeCSV(q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'),
+        String(q.upvotes),
+        q.status,
+        escapeCSV(cluster?.title || 'Uncategorized'),
+        escapeCSV(questionReplies || ''),
+      ].join(',')
+    })
+
+    const csv = [header.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `query-${code}-export.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const unansweredClusters: ClusterWithQuestions[] = clusters
     .filter((c) => c.status === 'unanswered')
     .map((c) => ({ ...c, questions: unansweredQuestions.filter((q) => q.cluster_id === c.id) }))
@@ -218,6 +253,32 @@ export default function ReportPage() {
                 Back to Analytics
               </a>
               {session.description && <p className="text-sm text-slate-500">{session.description}</p>}
+            </div>
+
+            {/* Export CSV */}
+            <div className="flex justify-end">
+              <button
+                onClick={exportCSV}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border"
+                style={{
+                  background: 'var(--theme-primary-subtle)',
+                  color: 'var(--theme-primary-hover)',
+                  borderColor: 'var(--theme-primary-light)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--theme-primary)'
+                  e.currentTarget.style.color = '#ffffff'
+                  e.currentTarget.style.borderColor = 'var(--theme-primary)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--theme-primary-subtle)'
+                  e.currentTarget.style.color = 'var(--theme-primary-hover)'
+                  e.currentTarget.style.borderColor = 'var(--theme-primary-light)'
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Export CSV
+              </button>
             </div>
 
             {/* Summary stats */}

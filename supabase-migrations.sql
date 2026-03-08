@@ -81,6 +81,34 @@ alter table sessions add column if not exists recurrence_parent_id uuid;
 alter table sessions add column if not exists recurrence_dates jsonb;
 
 -- ============================================================
+-- AUTO-MARK ANSWERED ON HOST REPLY (Sprint 6)
+-- ============================================================
+
+-- When a host reply is inserted, automatically mark the question as answered.
+-- This makes the behavior reliable regardless of which client inserts the reply.
+
+CREATE OR REPLACE FUNCTION auto_mark_answered()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_host = true THEN
+    UPDATE questions SET status = 'answered' WHERE id = NEW.question_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'on_host_reply_mark_answered'
+  ) THEN
+    CREATE TRIGGER on_host_reply_mark_answered
+      AFTER INSERT ON replies
+      FOR EACH ROW
+      EXECUTE FUNCTION auto_mark_answered();
+  END IF;
+END $$;
+
+-- ============================================================
 -- REALTIME
 -- ============================================================
 
