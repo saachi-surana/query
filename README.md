@@ -47,7 +47,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ANTHROPIC_API_KEY=sk-ant-your-key
 ```
 
-- **Supabase URL & anon key**: found in your Supabase project under **Settings → API**.
+- **Supabase URL & anon key**: URL found in your Supabase project under **Settings → General** key found under **Settings → API Keys → Publishable Key**.
 - **Anthropic API key**: get one at [console.anthropic.com](https://console.anthropic.com).
 
 > **Note:** If `ANTHROPIC_API_KEY` is missing or set to `sk-ant-placeholder`, the app still works — questions will just appear in the "Unclustered" section without AI grouping.
