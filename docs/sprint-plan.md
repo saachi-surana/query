@@ -900,6 +900,12 @@ Walk through every page on a real phone (or Chrome DevTools mobile mode at 375px
 
 **Estimated complexity**: Medium-High
 
+#### 7.1.1 Password Match Validation UI (Signup Page)
+On the `/signup` page, show real-time feedback when the user types in the "Confirm Password" field:
+- **Match**: green checkmark icon + "Passwords match" text in green
+- **Mismatch**: red X icon + "Passwords don't match" text in red
+- Feedback only appears after the user has started typing in the confirm field (no error shown on empty/untouched state)
+
 ---
 
 ### 7.2 Database Auth Integration
