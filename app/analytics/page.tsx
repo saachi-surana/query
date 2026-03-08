@@ -276,12 +276,6 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </aside>
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-10 sm:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
@@ -352,7 +346,7 @@ export default function AnalyticsPage() {
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">AI Insights</h2>
             {aiInsight ? (
               <div className="bg-theme-primary-subtle border border-theme-primary-light rounded-xl px-4 py-3">
-                <p className="text-sm text-orange-900 leading-relaxed">{aiInsight}</p>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--theme-primary-hover)' }}>{aiInsight}</p>
               </div>
             ) : (
               <div className="text-center py-6">
@@ -386,7 +380,7 @@ export default function AnalyticsPage() {
                   <th className="px-4 py-3 font-medium text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-100">
                 {sessionRows.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-3">

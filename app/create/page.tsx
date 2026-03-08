@@ -176,7 +176,7 @@ export default function CreatePage() {
           {/* Description */}
           <div className="space-y-1.5">
             <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-              Description <span className="text-gray-400 font-normal">(optional)</span>
+              Description <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <textarea
               id="description"
@@ -192,7 +192,7 @@ export default function CreatePage() {
           {/* Date + Time split */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">
-              Start Date & Time <span className="text-gray-400 font-normal">(optional)</span>
+              Start Date & Time <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <div className="flex gap-3">
               <input
@@ -221,7 +221,7 @@ export default function CreatePage() {
           {/* Recurrence */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-slate-700">
-              Recurrence <span className="text-gray-400 font-normal">(optional)</span>
+              Recurrence <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <div className="flex flex-wrap gap-2">
               {(['none', 'weekly', 'biweekly', 'monthly', 'custom'] as const).map((opt) => (

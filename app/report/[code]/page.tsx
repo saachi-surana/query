@@ -338,16 +338,16 @@ export default function ReportPage() {
                     </div>
                     <div className="rounded-lg bg-theme-primary-subtle border border-theme-primary-light px-3 py-2">
                       <p className="text-xs font-semibold text-theme-primary">AI Summary</p>
-                      <p className="text-sm text-orange-900">{c.summary_question}</p>
+                      <p className="text-sm" style={{ color: 'var(--theme-primary-hover)' }}>{c.summary_question}</p>
                     </div>
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-slate-100">
                       {c.questions.map((q) => (
                         <div key={q.id} className="py-2 flex items-start gap-3">
                           <span className="shrink-0 font-mono text-xs font-bold text-theme-primary bg-theme-primary-subtle px-2 py-0.5 rounded">
                             ▲ {q.upvotes}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-800">{q.text}</p>
+                            <p className="text-sm text-slate-800">{q.text}</p>
                             <p className="text-xs text-slate-400 mt-0.5">
                               {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
                             </p>
@@ -361,13 +361,13 @@ export default function ReportPage() {
                 {unclusteredUnanswered.length > 0 && (
                   <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
                     <h3 className="text-sm font-semibold text-slate-900">Uncategorized</h3>
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-slate-100">
                       {unclusteredUnanswered.map((q) => (
                         <div key={q.id} className="py-2 flex items-start gap-3">
                           <span className="shrink-0 font-mono text-xs font-bold text-theme-primary bg-theme-primary-subtle px-2 py-0.5 rounded">
                             ▲ {q.upvotes}
                           </span>
-                          <p className="text-sm text-gray-800">{q.text}</p>
+                          <p className="text-sm text-slate-800">{q.text}</p>
                         </div>
                       ))}
                     </div>
@@ -391,7 +391,7 @@ export default function ReportPage() {
                         <h3 className="text-sm font-semibold text-slate-700">{c.title}</h3>
                         <span className="text-xs text-slate-400">{c.questions.length} question{c.questions.length !== 1 ? 's' : ''}</span>
                       </div>
-                      <p className="text-sm text-gray-600">{c.summary_question}</p>
+                      <p className="text-sm text-slate-600">{c.summary_question}</p>
                       {clusterReplies.length > 0 && (
                         <div className="ml-4 pl-3 border-l-2 border-green-200 space-y-1">
                           {clusterReplies.map((r) => (
@@ -415,7 +415,7 @@ export default function ReportPage() {
                   <div key={f.id} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
                     <h3 className="text-sm font-semibold text-slate-900">{f.cluster_title}</h3>
                     <p className="text-sm font-medium text-slate-700">{f.summary_question}</p>
-                    <p className="text-sm text-gray-600 bg-slate-50 rounded-lg px-3 py-2">{f.answer}</p>
+                    <p className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">{f.answer}</p>
                   </div>
                 ))}
               </section>
