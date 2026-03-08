@@ -296,6 +296,15 @@ export default function JoinPage() {
         localStorage.setItem(`query-my-questions-${session.id}`, JSON.stringify(Array.from(next)))
         return next
       })
+      // Trigger clustering for this question (fire-and-forget)
+      // This ensures clustering happens even if the host dashboard isn't open
+      if (!session.moderation_enabled) {
+        fetch('/api/cluster', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionId: data.id, sessionId: session.id }),
+        }).catch(() => {/* silent */})
+      }
     }
     setSubmitSuccess(true)
     setSubmitting(false)

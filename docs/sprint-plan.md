@@ -1468,6 +1468,37 @@ supabase-schema.sql                # Updated schema
 
 ---
 
+### 9.8 AI Clustering Pipeline — Robust Dynamic Clustering with Edge Case Handling
+**Priority**: Critical — clustering is broken/unreliable without this
+**Estimated complexity**: Medium
+
+**Status**: COMPLETED
+
+**What it is**: Fix the AI clustering pipeline so questions are reliably clustered. The previous implementation only triggered clustering from the host dashboard's real-time subscription, meaning questions went unclustered if the host dashboard wasn't open. This task implements:
+
+1. **Client-side clustering trigger from join page**: When a participant submits a question (and moderation is off), the join page fires `/api/cluster` directly, ensuring clustering happens regardless of whether the host dashboard is open.
+2. **Duplicate prevention**: The API now checks if a question is already clustered before re-processing.
+3. **Batch re-clustering**: New `mode: 'batch'` option on `/api/cluster` that clusters all unclustered questions in one AI call.
+4. **Re-cluster button**: Host dashboard shows a "Re-cluster" button in the unclustered questions section.
+5. **Edge case protocol**: Full documentation of how clustering handles answered clusters, moderation, manual overrides, single-question clusters, and cluster merging.
+
+**Protocol decisions**:
+- Only unanswered clusters are candidates for new questions (answered clusters are excluded)
+- Unapproved questions skip clustering until approved
+- Already-clustered questions are not re-processed
+- Batch mode groups multiple unclustered questions in a single AI call for efficiency
+- Empty clusters are cleaned up after batch operations
+
+**Files modified**:
+- `lib/clustering.ts` — Added `batchClusterSession()`, `cleanupEmptyClusters()`, full protocol documentation
+- `app/api/cluster/route.ts` — Added batch mode, duplicate prevention, better error handling
+- `app/session/[code]/page.tsx` — Added re-cluster button, improved clustering trigger
+- `app/join/[code]/page.tsx` — Added client-side clustering trigger on question submit
+
+**Dependencies**: None
+
+---
+
 ### Sprint 9 Execution Order
 
 | # | Task | Effort | Why This Order |

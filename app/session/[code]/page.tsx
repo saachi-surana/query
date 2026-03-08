@@ -31,6 +31,7 @@ export default function ModeratorPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [allSessions, setAllSessions] = useState<Session[]>([])
+  const [reclustering, setReclustering] = useState(false)
 
   useEffect(() => {
     setSidebarOpen(window.innerWidth >= 768)
@@ -91,12 +92,14 @@ export default function ModeratorPage() {
           if (payload.eventType === 'INSERT') {
             const newQ = payload.new as Question
             setQuestions((prev) => [...prev, newQ])
-            // Trigger clustering
-            fetch('/api/cluster', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ questionId: newQ.id, sessionId: session.id }),
-            }).catch(() => {/* silent */})
+            // Trigger clustering for approved questions without a cluster
+            if (newQ.approved && !newQ.cluster_id) {
+              fetch('/api/cluster', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionId: newQ.id, sessionId: session.id }),
+              }).catch(() => {/* silent */})
+            }
           } else if (payload.eventType === 'UPDATE') {
             setQuestions((prev) =>
               prev.map((q) => (q.id === (payload.new as Question).id ? (payload.new as Question) : q))
@@ -200,6 +203,31 @@ export default function ModeratorPage() {
       summary_question: cluster.summary_question,
       answer,
     })
+  }
+
+  async function reclusterSession() {
+    if (!session || reclustering) return
+    setReclustering(true)
+    try {
+      const res = await fetch('/api/cluster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, mode: 'batch' }),
+      })
+      if (res.ok) {
+        // Reload clusters and questions to reflect changes
+        const [{ data: qs }, { data: cs }] = await Promise.all([
+          supabase.from('questions').select('*').eq('session_id', session.id).order('created_at', { ascending: true }),
+          supabase.from('clusters').select('*').eq('session_id', session.id).order('created_at', { ascending: true }),
+        ])
+        if (qs) setQuestions(qs)
+        if (cs) setClusters(cs)
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setReclustering(false)
+    }
   }
 
   async function highlightCluster(clusterId: string | null) {
@@ -605,18 +633,43 @@ export default function ModeratorPage() {
         {/* Unclustered questions */}
         {unclusteredQuestions.length > 0 && (
           <section className="space-y-3">
-            <button
-              onClick={() => setUnclusteredOpen((o) => !o)}
-              className="flex items-center gap-2 group"
-            >
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">
-                Unclustered Questions
-              </h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
-                {unclusteredQuestions.length}
-              </span>
-              <ChevronIcon open={unclusteredOpen} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setUnclusteredOpen((o) => !o)}
+                className="flex items-center gap-2 group"
+              >
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">
+                  Unclustered Questions
+                </h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                  {unclusteredQuestions.length}
+                </span>
+                <ChevronIcon open={unclusteredOpen} />
+              </button>
+              <button
+                onClick={reclusterSession}
+                disabled={reclustering}
+                className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-theme-primary text-white hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
+                title="Use AI to cluster all unclustered questions"
+              >
+                {reclustering ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Clustering...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Re-cluster
+                  </>
+                )}
+              </button>
+            </div>
             {unclusteredOpen && (
               <div className="space-y-3">
                 {unclusteredQuestions.map((q) => (
