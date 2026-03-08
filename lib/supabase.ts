@@ -18,6 +18,7 @@ export type Session = {
   recurrence_type: string | null
   recurrence_parent_id: string | null
   recurrence_dates: string[] | null
+  user_id?: string
   created_at: string
 }
 
@@ -63,3 +64,5 @@ export type Reply = {
   is_host: boolean
   created_at: string
 }
+
+export type ClusterWithQuestions = Cluster & { questions: Question[] }

@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Reply, Cluster } from '@/lib/supabase'
+import { supabase, Session, Question, Reply, Cluster, ClusterWithQuestions } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/device-id'
-
-type ClusterWithQuestions = Cluster & { questions: Question[] }
 
 const MAX_CHARS = 500
 const DEBOUNCE_MS = 400

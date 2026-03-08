@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { jsPDF } from 'jspdf'
-import { supabase, Session, Question, Cluster, Reply, FaqEntry } from '@/lib/supabase'
-
-type ClusterWithQuestions = Cluster & { questions: Question[] }
+import { supabase, Session, Question, Cluster, Reply, FaqEntry, ClusterWithQuestions } from '@/lib/supabase'
+import { MeshHeader } from '@/components/MeshHeader'
+import { Sidebar } from '@/components/Sidebar'
 
 export default function ReportPage() {
   const params = useParams()
@@ -296,19 +296,10 @@ export default function ReportPage() {
 
   const unclusteredUnanswered = unansweredQuestions.filter((q) => !q.cluster_id)
 
-  const liveSessions = allSessions.filter((s) => !s.ended_at && (!s.starts_at || new Date(s.starts_at) <= new Date()))
-  const upcomingSessions = allSessions.filter((s) => s.starts_at && new Date(s.starts_at) > new Date() && !s.ended_at)
-  const pastSessions = allSessions.filter((s) => s.ended_at).slice(0, 10)
-
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header */}
-      <header className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20">
-        <div className="absolute inset-0 bg-theme-mesh-base" />
-        <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
-        <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
-        <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
-        <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
+      <MeshHeader>
         <div className="relative flex items-baseline gap-3">
           <button onClick={() => setSidebarOpen((o) => !o)} className="self-center shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <svg className="w-5 h-5" style={{ color: 'var(--theme-dark-accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -319,115 +310,18 @@ export default function ReportPage() {
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <span className="text-lg font-medium truncate" style={{ color: 'var(--theme-header-text)' }}>{session.title}</span>
         </div>
-      </header>
+      </MeshHeader>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        {/* Sidebar backdrop (mobile) */}
-        {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200 fixed sm:relative z-20 sm:z-auto h-[calc(100vh-48px)] sm:h-auto`}>
-          <div className="p-4 space-y-6 w-64">
-            {liveSessions.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[0.8125rem] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live ({liveSessions.length})
-                </p>
-                {liveSessions.map((s) => (
-                  <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
-                    {s.title}
-                    <span className="block text-xs text-slate-500 font-mono mt-0.5">{s.code}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-
-            {upcomingSessions.length > 0 && (() => {
-              const sorted = [...upcomingSessions].sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())
-              const standalone = sorted.filter((s) => !s.recurrence_parent_id)
-              const recurringMap = new Map<string, Session[]>()
-              sorted.forEach((s) => {
-                if (s.recurrence_parent_id) {
-                  const group = recurringMap.get(s.recurrence_parent_id) || []
-                  group.push(s)
-                  recurringMap.set(s.recurrence_parent_id, group)
-                }
-              })
-              return (
-                <div className="space-y-1.5">
-                  <p className="text-[0.8125rem] font-bold text-theme-primary uppercase tracking-wider">Upcoming</p>
-                  {standalone.map((s) => (
-                    <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
-                      {s.title}
-                      <span className="block text-xs text-slate-500 mt-0.5">{new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                    </a>
-                  ))}
-                  {Array.from(recurringMap.entries()).map(([parentId, group]) => {
-                    const first = group[0]
-                    const rest = group.slice(1)
-                    const isExpanded = expandedSeries.has(parentId)
-                    return (
-                      <div key={parentId}>
-                        <a href={`/session/${first.code}`} className="block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug font-medium truncate text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg transition-colors">
-                          {first.title}
-                        </a>
-                        {!isExpanded && rest.length > 0 ? (
-                          <button
-                            onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.add(parentId); return next })}
-                            className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
-                          >
-                            {new Date(first.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })} · +{rest.length} more ▾
-                          </button>
-                        ) : (
-                          <>
-                            {group.map((s) => (
-                              <a key={s.id} href={`/session/${s.code}`} className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors">
-                                {new Date(s.starts_at!).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                              </a>
-                            ))}
-                            {rest.length > 0 && (
-                              <button
-                                onClick={() => setExpandedSeries((prev) => { const next = new Set(prev); next.delete(parentId); return next })}
-                                className="block px-3 py-1 text-xs text-slate-400 hover:text-theme-primary transition-colors"
-                              >
-                                ▴ Show less
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-
-            {pastSessions.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[0.8125rem] font-bold text-slate-400 uppercase tracking-wider">Past</p>
-                {pastSessions.map((s) => (
-                  <a
-                    key={s.id}
-                    href={`/report/${s.code}`}
-                    className={`block px-3 py-2.5 rounded-lg text-[0.9375rem] leading-snug truncate transition-colors ${
-                      s.code === code ? 'bg-theme-sidebar-active-bg text-theme-sidebar-active-text font-medium' : 'text-slate-400 hover:bg-theme-sidebar-hover-bg'
-                    }`}
-                  >
-                    {s.title}
-                    <span className="block text-xs text-slate-400 font-mono mt-0.5">{s.code}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-
-            <div className="pt-4 border-t border-theme-sidebar-divider space-y-1">
-              <a href="/create" className="block px-3 py-2.5 rounded-lg text-[0.9375rem] text-theme-sidebar-active-text hover:bg-theme-sidebar-hover-bg font-semibold transition-colors">+ New Session</a>
-              <a href="/analytics" className="block px-3 py-2.5 rounded-lg text-[0.9375rem] text-theme-sidebar-text hover:bg-theme-sidebar-hover-bg font-medium transition-colors">Analytics</a>
-              <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Profile (coming soon)</div>
-              <div className="px-3 py-2.5 rounded-lg text-[0.9375rem] text-slate-400 cursor-default">Settings (coming soon)</div>
-            </div>
-          </div>
-        </aside>
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          allSessions={allSessions}
+          currentCode={code}
+          expandedSeries={expandedSeries}
+          setExpandedSeries={setExpandedSeries}
+          activePage="report"
+        />
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">

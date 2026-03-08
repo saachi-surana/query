@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getUser } from '@/lib/auth'
+import { MeshHeader } from '@/components/MeshHeader'
 
 function generateCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -129,18 +130,13 @@ export default function CreatePage() {
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* Header */}
-      <header className="relative overflow-hidden px-4 sm:px-6 py-3 shrink-0 z-20">
-        <div className="absolute inset-0 bg-theme-mesh-base" />
-        <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
-        <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
-        <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
-        <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
+      <MeshHeader>
         <div className="relative flex items-baseline gap-3">
           <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity tracking-tight">Query</a>
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <span className="text-lg font-medium" style={{ color: 'var(--theme-header-text-muted)' }}>Host a Session</span>
         </div>
-      </header>
+      </MeshHeader>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
