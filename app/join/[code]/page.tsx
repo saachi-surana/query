@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase, Session, Question, Reply, Cluster } from '@/lib/supabase'
+import { getDeviceId } from '@/lib/device-id'
 
 type ClusterWithQuestions = Cluster & { questions: Question[] }
 
@@ -107,10 +108,34 @@ export default function JoinPage() {
   const [upvoted, setUpvoted] = useState(false)
   const [upvotedIds, setUpvotedIds] = useState<Set<string>>(new Set())
   const [myQuestionIds, setMyQuestionIds] = useState<Set<string>>(new Set())
+  const deviceIdRef = useRef<string>('')
 
   // Similarity
   const [similarQuestions, setSimilarQuestions] = useState<Question[]>([])
   const debouncedText = useDebounce(questionText, DEBOUNCE_MS)
+
+  // Initialize device ID and load persisted data from localStorage
+  useEffect(() => {
+    deviceIdRef.current = getDeviceId()
+  }, [])
+
+  useEffect(() => {
+    if (!session) return
+    const savedMine = localStorage.getItem(`query-my-questions-${session.id}`)
+    if (savedMine) {
+      try {
+        const ids: string[] = JSON.parse(savedMine)
+        setMyQuestionIds(new Set(ids))
+      } catch { /* ignore corrupt data */ }
+    }
+    const savedUpvotes = localStorage.getItem(`query-upvotes-${session.id}`)
+    if (savedUpvotes) {
+      try {
+        const ids: string[] = JSON.parse(savedUpvotes)
+        setUpvotedIds(new Set(ids))
+      } catch { /* ignore corrupt data */ }
+    }
+  }, [session])
 
   // Load session
   useEffect(() => {
@@ -225,7 +250,7 @@ export default function JoinPage() {
 
   async function handleUpvote(questionId: string, fromSimilar = false) {
     const q = questions.find((q) => q.id === questionId)
-    if (!q) return
+    if (!q || !session) return
     const alreadyUpvoted = upvotedIds.has(questionId)
     await supabase
       .from('questions')
@@ -235,6 +260,7 @@ export default function JoinPage() {
       const next = new Set(prev)
       if (alreadyUpvoted) next.delete(questionId)
       else next.add(questionId)
+      localStorage.setItem(`query-upvotes-${session.id}`, JSON.stringify(Array.from(next)))
       return next
     })
     if (fromSimilar && !alreadyUpvoted) {
@@ -267,7 +293,11 @@ export default function JoinPage() {
     }
 
     if (data) {
-      setMyQuestionIds((prev) => new Set(prev).add(data.id))
+      setMyQuestionIds((prev) => {
+        const next = new Set(prev).add(data.id)
+        localStorage.setItem(`query-my-questions-${session.id}`, JSON.stringify(Array.from(next)))
+        return next
+      })
     }
     setSubmitSuccess(true)
     setSubmitting(false)
