@@ -89,119 +89,157 @@ export default function PresentPage() {
   const totalQuestions = approvedQuestions.filter((q) => q.status !== 'answered').length
   const totalUpvotes = approvedQuestions.reduce((s, q) => s + q.upvotes, 0)
 
+  // Find highlighted cluster
+  const highlightedCluster = unansweredClusters.find((c) => session?.highlighted_cluster_id === c.id)
+  const otherClusters = unansweredClusters.filter((c) => c.id !== session?.highlighted_cluster_id)
+
   if (notFound) {
     return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 text-xl">Session not found</p>
+      <main className="h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-slate-400 text-xl">Session not found</p>
       </main>
     )
   }
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-pulse text-gray-600">Loading...</div>
+      <main className="h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse text-slate-400 text-lg">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <main className="h-screen flex flex-col bg-slate-50">
       {/* Connection indicator */}
       {!connected && (
-        <div className="bg-yellow-600 px-4 py-1 text-xs text-center text-yellow-100">
+        <div className="bg-amber-500 px-4 py-1 text-xs text-center text-white font-medium shrink-0">
           Reconnecting...
         </div>
       )}
 
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-white">Query</h1>
-          <span className="text-gray-500">|</span>
-          <h2 className="text-lg text-gray-300 truncate">{session.title}</h2>
-        </div>
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">Questions</span>
-            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalQuestions}</span>
+      {/* Mesh gradient header */}
+      <header className="relative overflow-hidden px-6 py-4 shrink-0">
+        <div className="absolute inset-0 bg-theme-mesh-base" />
+        <div className="absolute top-[-80%] left-[-10%] w-[40%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-1)' }} />
+        <div className="absolute top-[-80%] left-[25%] w-[35%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-2)' }} />
+        <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
+        <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
+
+        <div className="relative flex items-center justify-between">
+          {/* Left: branding + session title */}
+          <div className="flex items-center gap-4 min-w-0">
+            <h1 className="text-3xl font-bold text-white shrink-0">Query</h1>
+            <span className="text-white/40 text-2xl shrink-0">|</span>
+            <h2 className="text-xl text-white/80 truncate">{session.title}</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">Upvotes</span>
-            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalUpvotes}</span>
-          </div>
-          <div className="bg-gray-800 rounded-lg px-4 py-2 flex items-center gap-3">
-            <span className="text-gray-400 text-xs">JOIN</span>
-            <span className="font-mono text-xl font-bold tracking-widest text-white">{code}</span>
+
+          {/* Right: code + join URL + live count */}
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="text-right">
+              <p className="font-mono text-3xl font-bold tracking-[0.2em] text-white">{code}</p>
+              <p className="text-sm text-white/60 font-mono">{joinUrl}</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-center">
+              <p className="text-xs text-white/70 uppercase tracking-wider font-medium">Live Questions</p>
+              <p className="text-2xl font-bold font-mono text-white">{totalQuestions}</p>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-hidden flex flex-col px-8 py-6">
+      {/* Stats bar */}
+      <div className="shrink-0 px-6 py-2.5 bg-white border-b border-slate-200">
+        <div className="max-w-4xl mx-auto flex items-center justify-center gap-8 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Questions</span>
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalQuestions}</span>
+          </div>
+          <div className="w-px h-4 bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Upvotes</span>
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{totalUpvotes}</span>
+          </div>
+          <div className="w-px h-4 bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Clusters</span>
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{unansweredClusters.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {totalQuestions === 0 ? (
           /* Empty state */
-          <div className="flex-1 flex flex-col items-center justify-center space-y-8">
+          <div className="h-full flex flex-col items-center justify-center space-y-8">
             <div className="text-center space-y-3">
-              <p className="text-4xl font-bold text-gray-300">Ask a question!</p>
-              <p className="text-xl text-gray-500">Go to the link below and submit your questions</p>
+              <p className="text-4xl font-bold text-slate-700">Ask a question!</p>
+              <p className="text-xl text-slate-400">Go to the link below and submit your questions</p>
             </div>
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl px-10 py-6 text-center space-y-2">
-              <p className="text-gray-500 text-sm uppercase tracking-wider">Join Code</p>
-              <p className="font-mono text-5xl font-bold tracking-[0.3em] text-white">{code}</p>
-              <p className="text-gray-500 text-sm font-mono">{joinUrl}</p>
+            <div className="rounded-2xl px-10 py-6 text-center space-y-2 border-2" style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}>
+              <p className="text-slate-500 text-sm uppercase tracking-wider">Join Code</p>
+              <p className="font-mono text-5xl font-bold tracking-[0.3em] text-slate-900">{code}</p>
+              <p className="text-slate-500 text-sm font-mono">{joinUrl}</p>
             </div>
           </div>
         ) : (
-          /* Cluster cards */
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-            {unansweredClusters.map((c, i) => {
+          <div className="max-w-4xl mx-auto space-y-4">
+            {/* Highlighted / Discussing cluster */}
+            {highlightedCluster && (() => {
+              const clusterUpvotes = highlightedCluster.questions.reduce((s, q) => s + q.upvotes, 0)
+              return (
+                <div
+                  className="rounded-2xl border-2 p-8 transition-all"
+                  style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}
+                >
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1 min-w-0 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold text-white animate-pulse"
+                          style={{ background: 'var(--theme-primary)' }}
+                        >
+                          DISCUSSING NOW
+                        </span>
+                      </div>
+                      <h3 className="text-2xl font-semibold text-slate-900">{highlightedCluster.title}</h3>
+                      <p className="text-lg text-slate-700 leading-relaxed">{highlightedCluster.summary_question}</p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium bg-white text-slate-600 border border-slate-200">
+                        {highlightedCluster.questions.length} question{highlightedCluster.questions.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium text-white" style={{ background: 'var(--theme-primary)' }}>
+                        {clusterUpvotes} upvote{clusterUpvotes !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Other clusters */}
+            {otherClusters.map((c) => {
               const clusterUpvotes = c.questions.reduce((s, q) => s + q.upvotes, 0)
-              const isHighlighted = session.highlighted_cluster_id === c.id
-              const isTop = i === 0 && !session.highlighted_cluster_id
-              const prominent = isHighlighted || isTop
               return (
                 <div
                   key={c.id}
-                  className={`rounded-xl border p-6 transition-all ${
-                    isHighlighted
-                      ? 'ring-1 bg-gray-900/50'
-                      : isTop
-                        ? 'bg-gray-900/50'
-                        : 'bg-gray-900/50 border-gray-800'
-                  }`}
-                  style={
-                    isHighlighted
-                      ? { borderColor: 'var(--theme-primary)', boxShadow: `0 0 0 1px var(--theme-primary)` }
-                      : isTop
-                        ? { borderColor: 'var(--theme-primary-muted)' }
-                        : undefined
-                  }
+                  className="rounded-2xl border p-6 transition-all"
+                  style={{ background: 'var(--theme-primary-subtle)', borderColor: 'var(--theme-primary-light)' }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-3">
-                        {isHighlighted && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white animate-pulse" style={{ background: 'var(--theme-primary)' }}>
-                            DISCUSSING NOW
-                          </span>
-                        )}
-                        {isTop && !isHighlighted && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ background: 'var(--theme-primary-muted)' }}>
-                            TOP
-                          </span>
-                        )}
-                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">{c.title}</h3>
-                      </div>
-                      <p className={`font-medium leading-relaxed ${prominent ? 'text-xl text-white' : 'text-lg text-gray-300'}`}>
-                        {c.summary_question}
-                      </p>
+                      <h3 className="text-2xl font-semibold text-slate-900">{c.title}</h3>
+                      <p className="text-lg text-slate-600 leading-relaxed">{c.summary_question}</p>
                     </div>
-                    <div className="shrink-0 flex flex-col items-center gap-1 bg-gray-800 rounded-lg px-3 py-2">
-                      <span className="text-xs text-gray-500">Questions</span>
-                      <span className="font-mono font-bold text-lg text-white">{c.questions.length}</span>
-                      <span className="text-xs text-gray-500">Upvotes</span>
-                      <span className="font-mono font-bold text-lg" style={{ color: 'var(--theme-primary)' }}>{clusterUpvotes}</span>
+                    <div className="shrink-0 flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium bg-white text-slate-600 border border-slate-200">
+                        {c.questions.length} question{c.questions.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium text-white" style={{ background: 'var(--theme-primary)' }}>
+                        {clusterUpvotes} upvote{clusterUpvotes !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -213,8 +251,8 @@ export default function PresentPage() {
               const unclustered = approvedQuestions.filter((q) => !q.cluster_id && q.status !== 'answered')
               if (unclustered.length === 0) return null
               return (
-                <div className="rounded-xl border border-gray-800 bg-gray-900/30 p-4 text-center">
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+                  <p className="text-sm text-slate-400">
                     + {unclustered.length} question{unclustered.length !== 1 ? 's' : ''} being categorized...
                   </p>
                 </div>
@@ -223,12 +261,6 @@ export default function PresentPage() {
           </div>
         )}
       </div>
-
-      {/* Footer with join info */}
-      <footer className="border-t border-gray-800 px-8 py-3 flex items-center justify-between text-sm text-gray-500">
-        <span>Powered by Query</span>
-        <span className="font-mono">{joinUrl}</span>
-      </footer>
     </main>
   )
 }
