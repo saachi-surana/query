@@ -779,6 +779,30 @@ export default function ModeratorPage() {
         </div>
       </header>
 
+      {/* Mobile action bar — shows code + present on small screens */}
+      <div className="flex sm:hidden items-center justify-center gap-3 px-4 py-2.5 bg-white border-b border-slate-200 shrink-0">
+        <button
+          onClick={copyLink}
+          className="flex-1 inline-flex items-center justify-center gap-2 font-mono text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
+          style={{ color: 'var(--theme-primary)', background: 'var(--theme-primary-subtle)', border: '1px solid var(--theme-primary-light)' }}
+        >
+          {code}
+          {copied ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+          ) : (
+            <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          )}
+        </button>
+        <a
+          href={`/present/${code}`}
+          target="_blank"
+          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-theme-primary text-white hover:bg-theme-primary-hover transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          Present
+        </a>
+      </div>
+
       {/* Copy toast */}
       {copyToast && (
         <div className="fixed sm:absolute sm:top-14 sm:right-4 bottom-6 sm:bottom-auto left-1/2 sm:left-auto -translate-x-1/2 sm:translate-x-0 z-30 animate-[fadeIn_0.2s_ease-out]">
