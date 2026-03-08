@@ -291,7 +291,7 @@ export default function PresentPage() {
             {session.logo_url && (
               <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-8 max-w-[120px]" />
             )}
-            <h1 className="text-2xl font-bold text-white shrink-0 tracking-tight">Query</h1>
+            <a href="/" className="text-2xl font-bold text-white shrink-0 tracking-tight hover:opacity-80 transition-opacity">Query</a>
             <span className="text-white/30 text-lg font-light shrink-0">/</span>
             <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
           </div>
