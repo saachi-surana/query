@@ -1120,6 +1120,419 @@ supabase-schema.sql                # Updated schema
 
 ---
 
+## Sprint 8: Tech Debt + Component Extraction
+
+**Status**: NOT STARTED
+
+**Goal**: Clean up the codebase, extract shared components, and improve maintainability.
+
+---
+
+### 8.1 Extract Shared Sidebar Component
+**Priority**: High
+**Estimated complexity**: Medium
+
+**What it is**: The sidebar (~100 lines) is duplicated in session, analytics, and report pages. Extract to a single shared component.
+
+**What to do**:
+- Extract sidebar to `components/Sidebar.tsx`
+- Props: active page, sessions data, sidebar open/collapsed state
+- Replace duplicated sidebar code in all pages with the shared component
+- Ensure sidebar behavior (collapse on mobile, highlight active page) works consistently
+
+**Files to create**:
+- `components/Sidebar.tsx`
+
+**Files to modify**:
+- `app/session/[code]/page.tsx`
+- `app/analytics/page.tsx`
+- `app/report/[code]/page.tsx`
+
+**Dependencies**: None
+
+---
+
+### 8.2 Extract Mesh Header Component
+**Priority**: High
+**Estimated complexity**: Medium
+
+**What it is**: The mesh gradient header (5 blobs + breadcrumb) is duplicated in 5+ files. Extract to a single shared component.
+
+**What to do**:
+- Extract mesh header to `components/MeshHeader.tsx`
+- Props: breadcrumb items (array of `{ label, href? }`)
+- Replace duplicated header code across all pages
+- Ensure consistent styling and responsive behavior
+
+**Files to create**:
+- `components/MeshHeader.tsx`
+
+**Files to modify**:
+- `app/session/[code]/page.tsx`
+- `app/analytics/page.tsx`
+- `app/report/[code]/page.tsx`
+- `app/create/page.tsx`
+- `app/login/page.tsx`
+- `app/signup/page.tsx`
+
+**Dependencies**: None
+
+---
+
+### 8.3 Extract Shared Types
+**Priority**: High
+**Estimated complexity**: Small
+
+**What it is**: `ClusterWithQuestions` is defined identically in 4 files. Consolidate into a single source of truth. Also add `user_id` to the Session type.
+
+**What to do**:
+- Move `ClusterWithQuestions` type to `lib/supabase.ts`
+- Import from `lib/supabase.ts` in all files that use it
+- Remove duplicate type definitions
+- Add `user_id` field to the `Session` type
+
+**Files to modify**:
+- `lib/supabase.ts`
+- `app/session/[code]/page.tsx`
+- `app/join/[code]/page.tsx`
+- `app/present/[code]/page.tsx`
+- `app/report/[code]/page.tsx`
+
+**Dependencies**: None
+
+---
+
+### 8.4 Split Session Page
+**Priority**: Medium
+**Estimated complexity**: Large
+
+**What it is**: `app/session/[code]/page.tsx` is 1000+ lines. Extract major sub-components into their own files for maintainability.
+
+**What to do**:
+- Extract `QuestionRow` component to `components/QuestionRow.tsx`
+- Extract `ClusterCard` component to `components/ClusterCard.tsx`
+- Extract `ChevronIcon` component to `components/ChevronIcon.tsx`
+- Extract `Spinner` component to `components/Spinner.tsx`
+- Keep state management and data fetching in the parent page
+- Pass data and callbacks as props to extracted components
+
+**Files to create**:
+- `components/QuestionRow.tsx`
+- `components/ClusterCard.tsx`
+- `components/ChevronIcon.tsx`
+- `components/Spinner.tsx`
+
+**Files to modify**:
+- `app/session/[code]/page.tsx`
+
+**Dependencies**: 8.3 (shared types should be extracted first so components import from the right place)
+
+---
+
+### 8.5 Add user_id to Session Type
+**Priority**: Low
+**Estimated complexity**: Small
+
+**What it is**: Ensure the `Session` type in `lib/supabase.ts` includes the `user_id` field added during Sprint 7 auth work.
+
+**What to do**:
+- Update `lib/supabase.ts` Session type to include `user_id?: string`
+- Verify all session queries handle the optional field correctly
+
+**Files to modify**:
+- `lib/supabase.ts`
+
+**Dependencies**: 7.2 (DB auth integration must be done first)
+
+---
+
+### Sprint 8 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Extract shared types (8.3) | 30 min | Foundation — other extractions depend on clean types |
+| 2 | Add user_id to Session type (8.5) | 15 min | Quick, pairs with 8.3 |
+| 3 | Extract Mesh Header (8.2) | 1-2 hrs | Independent, reduces duplication across many files |
+| 4 | Extract Shared Sidebar (8.1) | 1-2 hrs | Independent, reduces duplication across 3 pages |
+| 5 | Split Session Page (8.4) | 2-3 hrs | Most complex, benefits from clean types from 8.3 |
+
+**Total Sprint 8 estimate**: ~5-8 hrs of implementation
+
+---
+
+---
+
+## Sprint 9: New Features (Competitive Gaps)
+
+**Status**: NOT STARTED
+
+**Goal**: Add the most impactful missing features identified in the competitive analysis. Close key gaps with Slido, Mentimeter, and Pigeonhole.
+
+---
+
+### Interactive Features
+
+---
+
+### 9.1 QR Code for Joining
+**Priority**: High
+**Estimated complexity**: Small
+
+**What it is**: Generate a QR code on the session dashboard and presenter view that attendees can scan to join.
+
+**What to do**:
+- Install `qrcode.react` library
+- Generate QR code pointing to the join URL (`/join/[code]`)
+- Display QR code in: header code badge area (tooltip/popover), presenter view (overlay), empty state card
+- QR code should be downloadable (right-click save or explicit download button)
+
+**Files to create/modify**:
+- `app/session/[code]/page.tsx` — add QR code to header/empty state
+- `app/present/[code]/page.tsx` — add QR code overlay
+- `package.json` — add `qrcode.react` dependency
+
+**Dependencies**: None
+
+---
+
+### 9.2 Multiple Choice Polls
+**Priority**: High
+**Estimated complexity**: Large
+
+**What it is**: New "Poll" feature alongside Q&A. Host creates a poll with 2-5 options. Attendees vote. Results shown in real-time bar chart.
+
+**What to do**:
+- Create new DB table: `polls` (id, session_id, question text, options jsonb, votes jsonb, created_at, is_active boolean)
+- Host UI: poll creation form in session settings or a dedicated "Polls" tab
+- Attendee UI: poll card with radio buttons, submit vote, see results after voting
+- Presenter UI: live bar chart of poll results
+- Real-time updates via Supabase subscriptions on `polls` table
+- One active poll at a time per session
+
+**Files to create**:
+- `components/PollCreate.tsx` — poll creation form for hosts
+- `components/PollVote.tsx` — voting UI for attendees
+- `components/PollResults.tsx` — bar chart results display
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add Polls tab or section
+- `app/join/[code]/page.tsx` — show active poll to attendees
+- `app/present/[code]/page.tsx` — show poll results in presenter view
+- `lib/supabase.ts` — add Poll type
+- `supabase-schema.sql` — add polls table
+- `supabase-migrations.sql` — migration for polls table
+
+**Dependencies**: None
+
+---
+
+### 9.3 Word Clouds
+**Priority**: Medium
+**Estimated complexity**: Medium
+
+**What it is**: Host triggers a word cloud prompt. Attendees submit single words/phrases. AI groups similar words. Display as a visual word cloud in presenter view.
+
+**What to do**:
+- Host creates a word cloud prompt (e.g., "Describe this session in one word")
+- Attendees submit single words or short phrases
+- AI groups similar submissions (e.g., "great" and "awesome")
+- Render as a visual word cloud (CSS-based or canvas library)
+- Show in presenter view and on the session dashboard
+
+**Files to create**:
+- `components/WordCloud.tsx` — word cloud visualization component
+- `components/WordCloudPrompt.tsx` — submission UI for attendees
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add word cloud trigger
+- `app/join/[code]/page.tsx` — show word cloud prompt to attendees
+- `app/present/[code]/page.tsx` — show word cloud visualization
+- `app/api/cluster/route.ts` — add word grouping endpoint (or new API route)
+
+**Dependencies**: None (but benefits from 8.4 split session page for cleaner integration)
+
+---
+
+### Export & Reporting
+
+---
+
+### 9.4 PDF Export for Reports
+**Priority**: Medium
+**Estimated complexity**: Medium
+
+**What it is**: Add "Export PDF" button alongside CSV on the report page. Generate a formatted PDF with stats, questions, clusters, and replies.
+
+**What to do**:
+- Install `jspdf` or `html2pdf.js` library
+- Add "Export PDF" button next to existing CSV export on report page
+- PDF includes: session title, date, stats summary, all clusters with questions, replies
+- Styled with colors and layout matching the report page design
+- Client-side generation (no server needed)
+
+**Files to create/modify**:
+- `app/report/[code]/page.tsx` — add PDF export button and generation logic
+- `package.json` — add PDF library dependency
+
+**Dependencies**: None
+
+---
+
+### Branding & Customization
+
+---
+
+### 9.5 Custom Host Branding
+**Priority**: Low
+**Estimated complexity**: Large
+
+**What it is**: Hosts can upload a logo and pick an accent color during session creation. Branding appears on session pages and presenter view.
+
+**What to do**:
+- Add fields to session creation: logo upload (stored in Supabase Storage), brand color picker
+- Store in `sessions` table: `logo_url text`, `brand_color text`
+- On session pages, override CSS custom properties (`--color-primary`, etc.) with brand color
+- Presenter view shows host logo in header area
+- Attendee join page shows host logo
+- Fallback to default Query branding when not set
+
+**Files to modify**:
+- `app/create/page.tsx` — add logo upload + color picker fields
+- `app/session/[code]/page.tsx` — apply brand color, show logo
+- `app/join/[code]/page.tsx` — apply brand color, show logo
+- `app/present/[code]/page.tsx` — apply brand color, show logo
+- `lib/supabase.ts` — update Session type with logo_url, brand_color
+- `supabase-schema.sql` — add columns
+- `supabase-migrations.sql` — migration for new columns
+
+**Dependencies**: 7.1 (host auth — branding is per-host)
+
+---
+
+### Deployment
+
+---
+
+### 9.6 Vercel Deployment
+**Priority**: High
+**Estimated complexity**: Small
+
+**What it is**: Deploy the app to Vercel with custom domain and proper environment configuration.
+
+**What to do**:
+- Set up Vercel project linked to the git repository
+- Configure environment variables (Supabase URL, Supabase anon key, AI provider keys)
+- Configure build settings (Next.js auto-detected)
+- Add `vercel.json` if custom configuration needed (rewrites, headers, etc.)
+- Set up custom domain
+- Test production build for any SSR/hydration issues
+
+**Files to create/modify**:
+- `vercel.json` (if needed)
+- `.env.example` — ensure all required env vars are documented
+
+**Dependencies**: None (can be done at any time)
+
+---
+
+### 9.7 PWA Setup
+**Priority**: Low
+**Estimated complexity**: Medium
+
+**What it is**: Make the app installable on mobile devices as a Progressive Web App.
+
+**What to do**:
+- Create `public/manifest.json` with app name, icons, theme color, display mode
+- Add PWA meta tags to `app/layout.tsx` (theme-color, apple-touch-icon, etc.)
+- Create a basic service worker for offline fallback page
+- Add app icons in multiple sizes (192x192, 512x512)
+- Test install prompt on Android Chrome and iOS Safari
+- Add offline fallback page (`app/offline/page.tsx`) shown when no network
+
+**Files to create**:
+- `public/manifest.json`
+- `public/sw.js` — service worker
+- `public/icons/` — app icons in multiple sizes
+- `app/offline/page.tsx` — offline fallback page
+
+**Files to modify**:
+- `app/layout.tsx` — add PWA meta tags and manifest link
+
+**Dependencies**: 9.6 (deploy first so PWA can be tested in production context)
+
+---
+
+### Sprint 9 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | QR code for joining (9.1) | 1-2 hrs | Quick win, high visibility |
+| 2 | Vercel deployment (9.6) | 1-2 hrs | Get app live early, enables testing |
+| 3 | PDF export for reports (9.4) | 2-3 hrs | Builds on existing report page |
+| 4 | Multiple choice polls (9.2) | 4-6 hrs | Major feature, new DB table |
+| 5 | Word clouds (9.3) | 3-4 hrs | Interactive feature, pairs with polls |
+| 6 | PWA setup (9.7) | 2-3 hrs | Requires deployment (9.6) first |
+| 7 | Custom host branding (9.5) | 4-5 hrs | Most complex, least urgent |
+
+**Total Sprint 9 estimate**: ~17-25 hrs of implementation
+
+---
+
+### Sprint 9 Database Changes
+
+```sql
+-- Multiple choice polls
+CREATE TABLE IF NOT EXISTS polls (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES sessions(id) ON DELETE CASCADE NOT NULL,
+  question text NOT NULL,
+  options jsonb NOT NULL DEFAULT '[]',
+  votes jsonb NOT NULL DEFAULT '{}',
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- Custom host branding
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS logo_url text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS brand_color text;
+```
+
+---
+
+### Sprint 9 Files
+
+**New files**:
+```
+components/PollCreate.tsx             # Poll creation form (host)
+components/PollVote.tsx               # Poll voting UI (attendee)
+components/PollResults.tsx            # Poll results bar chart
+components/WordCloud.tsx              # Word cloud visualization
+components/WordCloudPrompt.tsx        # Word cloud submission UI
+public/manifest.json                  # PWA manifest
+public/sw.js                          # Service worker
+app/offline/page.tsx                  # Offline fallback page
+vercel.json                           # Vercel config (if needed)
+```
+
+**Modified files**:
+```
+app/session/[code]/page.tsx           # QR code, polls tab, word cloud trigger, branding
+app/join/[code]/page.tsx              # Poll voting, word cloud prompt, branding
+app/present/[code]/page.tsx           # QR overlay, poll results, word cloud, branding
+app/report/[code]/page.tsx            # PDF export button
+app/create/page.tsx                   # Logo upload, color picker
+app/layout.tsx                        # PWA meta tags
+lib/supabase.ts                       # Poll type, Session branding fields
+supabase-schema.sql                   # Polls table, branding columns
+supabase-migrations.sql               # Migration SQL
+package.json                          # New dependencies (qrcode.react, jspdf)
+.env.example                          # Document any new env vars
+```
+
+---
+
+---
+
 ## Definition of Done (per feature)
 
 - [ ] Feature works end-to-end (host + attendee flows)
