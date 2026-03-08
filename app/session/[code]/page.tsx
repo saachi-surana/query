@@ -74,54 +74,52 @@ function QuestionRow({
   }
 
   return (
-    <div className="py-2.5 space-y-2">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0 space-y-1">
-          <p className="text-sm text-slate-800">{question.text}</p>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>{question.is_anonymous ? 'Anonymous' : question.author_name || 'Anonymous'}</span>
-            <span>·</span>
-            <span>▲ {question.upvotes}</span>
-            <span>·</span>
-            <button
-              onClick={() => setShowReplies((o) => !o)}
-              className="text-theme-primary hover:text-theme-primary-hover transition-colors"
-            >
-              {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : 'Reply'}
-            </button>
-            {sessionId && !question.suggested_answer && question.status !== 'answered' && (
-              <>
-                <span>·</span>
-                <button
-                  onClick={async () => {
-                    setSuggesting(true)
-                    await fetch('/api/suggest-answer', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ questionId: question.id, sessionId }),
-                    }).catch(() => {})
-                    setSuggesting(false)
-                  }}
-                  disabled={suggesting}
-                  className="text-theme-primary hover:text-theme-primary-hover transition-colors disabled:opacity-50"
-                >
-                  {suggesting ? 'Thinking...' : 'AI Suggest'}
-                </button>
-              </>
-            )}
-          </div>
-          {question.suggested_answer && (
-            <div className="rounded-md bg-theme-primary-subtle border border-theme-primary-light px-3 py-2 space-y-1">
-              <p className="text-xs font-bold text-theme-primary uppercase tracking-wider">AI Suggested Answer</p>
-              <p className="text-sm text-orange-900">{question.suggested_answer}</p>
-            </div>
+    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 space-y-2.5">
+      {/* Question text — prominent */}
+      <p className="text-base leading-relaxed text-slate-900">{question.text}</p>
+
+      {/* Meta row: upvotes, author, actions, mark button */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-400 min-w-0">
+          <span className="inline-flex items-center gap-1 font-semibold text-slate-600">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+            {question.upvotes}
+          </span>
+          <span className="text-slate-300">·</span>
+          <span>{question.is_anonymous ? 'Anonymous' : question.author_name || 'Anonymous'}</span>
+          <span className="text-slate-300">·</span>
+          <button
+            onClick={() => setShowReplies((o) => !o)}
+            className="text-theme-primary hover:text-theme-primary-hover transition-colors font-medium"
+          >
+            {replies.length > 0 ? `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : 'Reply'}
+          </button>
+          {sessionId && !question.suggested_answer && question.status !== 'answered' && (
+            <>
+              <span className="text-slate-300">·</span>
+              <button
+                onClick={async () => {
+                  setSuggesting(true)
+                  await fetch('/api/suggest-answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ questionId: question.id, sessionId }),
+                  }).catch(() => {})
+                  setSuggesting(false)
+                }}
+                disabled={suggesting}
+                className="text-theme-primary hover:text-theme-primary-hover transition-colors disabled:opacity-50 font-medium"
+              >
+                {suggesting ? 'Thinking...' : 'AI Suggest'}
+              </button>
+            </>
           )}
         </div>
         {question.status === 'answered' ? (
           <button
             onClick={handleToggle}
             disabled={marking}
-            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-green-200 disabled:opacity-50 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-green-200 disabled:opacity-50 transition-colors"
           >
             {marking ? <Spinner /> : '✓'} Answered
           </button>
@@ -129,15 +127,23 @@ function QuestionRow({
           <button
             onClick={handleToggle}
             disabled={marking}
-            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
           >
             {marking ? <Spinner /> : '✓'} Mark
           </button>
         )}
       </div>
 
+      {/* AI suggested answer */}
+      {question.suggested_answer && (
+        <div className="rounded-lg bg-theme-primary-subtle border border-theme-primary-light px-3 py-2.5 space-y-1">
+          <p className="text-xs font-bold text-theme-primary uppercase tracking-wider">AI Suggested Answer</p>
+          <p className="text-sm text-orange-900 leading-relaxed">{question.suggested_answer}</p>
+        </div>
+      )}
+
       {showReplies && (
-        <div className="ml-4 pl-3 border-l-2 border-slate-200 space-y-2">
+        <div className="pl-3 border-l-2 border-slate-200 space-y-2">
           {visibleReplies.map((r) => (
             <div key={r.id} className="space-y-0.5">
               <p className="text-sm text-slate-700">{r.text}</p>
@@ -305,7 +311,7 @@ function ClusterCard({
 
           {/* Questions */}
           {cluster.questions.length > 0 && (
-            <div className="divide-y divide-slate-100">
+            <div className="space-y-3">
               {cluster.questions.map((q) => (
                 <QuestionRow
                   key={q.id}
@@ -1085,11 +1091,9 @@ export default function ModeratorPage() {
               <ChevronIcon open={unclusteredOpen} />
             </button>
             {unclusteredOpen && (
-              <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+              <div className="space-y-3">
                 {unclusteredQuestions.map((q) => (
-                  <div key={q.id} className="px-5">
-                    <QuestionRow question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
-                  </div>
+                  <QuestionRow key={q.id} question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
                 ))}
               </div>
             )}
@@ -1147,18 +1151,17 @@ export default function ModeratorPage() {
 
                 {/* Subtab content: Misc */}
                 {answeredSubtab === 'misc' && (answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0) && (
-                  <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                  <div className="space-y-3">
                     {[...answeredUnclusteredQuestions, ...answeredOrphanQuestions].map((q) => (
-                      <div key={q.id} className="px-5">
-                        <QuestionRow
-                          question={q}
-                          replies={replies.filter((r) => r.question_id === q.id)}
-                          sessionId={session.id}
-                          onMarkAnswered={markQuestionAnswered}
-                          onMarkUnanswered={markQuestionUnanswered}
-                          onReply={handleHostReply}
-                        />
-                      </div>
+                      <QuestionRow
+                        key={q.id}
+                        question={q}
+                        replies={replies.filter((r) => r.question_id === q.id)}
+                        sessionId={session.id}
+                        onMarkAnswered={markQuestionAnswered}
+                        onMarkUnanswered={markQuestionUnanswered}
+                        onReply={handleHostReply}
+                      />
                     ))}
                   </div>
                 )}
