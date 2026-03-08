@@ -11,6 +11,9 @@ export function QuestionRow({
   onMarkAnswered,
   onMarkUnanswered,
   onReply,
+  onPin,
+  pinError,
+  onArchive,
 }: {
   question: Question
   replies: Reply[]
@@ -18,6 +21,9 @@ export function QuestionRow({
   onMarkAnswered: (id: string) => void
   onMarkUnanswered?: (id: string) => void
   onReply: (questionId: string, text: string) => Promise<void>
+  onPin?: (id: string, pinned: boolean) => void
+  pinError?: string | null
+  onArchive?: (id: string, archived: boolean) => void
 }) {
   const [marking, setMarking] = useState(false)
   const [showReplies, setShowReplies] = useState(replies.length > 0)
@@ -50,9 +56,14 @@ export function QuestionRow({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 space-y-2.5">
+    <div className={`bg-white rounded-xl border px-4 py-3 space-y-2.5 ${question.is_pinned ? 'border-l-4 border-l-amber-400 border-t-slate-200 border-r-slate-200 border-b-slate-200 bg-amber-50/40' : 'border-slate-200'}`}>
       {/* Question text — prominent */}
       <p className="text-base leading-relaxed text-slate-900">{question.text}</p>
+
+      {/* Pin error */}
+      {pinError && (
+        <p className="text-xs text-red-600 font-medium">{pinError}</p>
+      )}
 
       {/* Meta row: upvotes, author, actions, mark button */}
       <div className="flex items-center justify-between gap-3">
@@ -91,6 +102,38 @@ export function QuestionRow({
             </>
           )}
         </div>
+        {onPin && (
+          <button
+            onClick={() => onPin(question.id, !question.is_pinned)}
+            className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border transition-colors ${
+              question.is_pinned
+                ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-50'
+                : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200'
+            }`}
+            title={question.is_pinned ? 'Unpin question' : 'Pin question'}
+          >
+            <svg className="w-3.5 h-3.5" fill={question.is_pinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            {question.is_pinned ? 'Pinned' : 'Pin'}
+          </button>
+        )}
+        {onArchive && (
+          <button
+            onClick={() => onArchive(question.id, !question.archived)}
+            className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border transition-colors ${
+              question.archived
+                ? 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-200 hover:text-slate-600 hover:border-slate-300'
+            }`}
+            title={question.archived ? 'Unarchive question' : 'Archive question'}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            {question.archived ? 'Unarchive' : 'Archive'}
+          </button>
+        )}
         {question.status === 'answered' ? (
           <button
             onClick={handleToggle}

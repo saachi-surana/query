@@ -128,12 +128,18 @@ From Slido's own community forum:
 |---|---|
 | Chronological question list | **AI-clustered topics with summary questions** |
 | Manual labels for grouping | **Automatic real-time clustering** |
-| Moderation at $720/yr | **Free moderation** (planned) |
+| Moderation at $720/yr | **Free moderation** |
 | Admin reply (flat) | **Threaded replies from host + attendees** |
 | One-way upvotes | **Toggle upvotes (upvote/un-upvote)** |
-| Export behind paywall | **Free export** (planned) |
-| No post-session follow-up | **Async follow-up answers** (planned) |
-| No AI categorization | **AI is the core product** |
+| Export behind paywall | **Free CSV + PDF export** |
+| No post-session follow-up | **Async follow-up answers after session ends** |
+| No AI categorization | **AI-powered clustering is the core product** |
+| Branding at $720/yr | **Free custom branding (logo + accent color)** |
+| Analytics behind Enterprise tier | **Free analytics dashboard with AI insights** |
+| Basic polls | **Polls (single + multi-select) + Word Clouds** |
+| No QR codes on free tier | **Free QR code generation (SVG + PNG download)** |
+| No pre-session Q&A | **Pre-session question collection with AI clustering** |
+| No recurring session intelligence | **FAQ library carries forward across sessions** |
 
 ---
 
@@ -144,6 +150,46 @@ From Slido's own community forum:
 Slido's own users are literally requesting on their community forum exactly what we already built. The AI clustering feature is not a nice-to-have — it's the #1 requested feature. We just need to polish the wrapper around it.
 
 The biggest threat is not another Q&A tool — it's native platform Q&A (Zoom, Teams) becoming "good enough." That means our AI intelligence layer needs to be so clearly superior that hosts can't live without it.
+
+---
+
+## 7. Feature Parity Scorecard (Updated March 2026)
+
+### Features We Match or Exceed Slido On
+- Submit questions + upvote
+- Moderation queue (approve/reject) — free vs Slido's $720/yr
+- Present mode (projectable with QR codes)
+- Mark as answered (questions + clusters)
+- CSV + PDF export — free vs Slido's paid tier
+- Admin/host reply — threaded (better than Slido's flat replies)
+- Multiple choice polls (single + multi-select)
+- Word clouds
+- Custom branding (logo + accent color) — free vs Slido's $720/yr
+- Session analytics — free vs Slido's Enterprise tier
+- QR code for joining
+- Pre-session question collection
+- Post-session follow-up answers — nobody else has this well
+- AI question clustering — our core differentiator, nobody else has this
+- Multi-moderator support with claim system
+- Recurring sessions
+
+### Remaining Gaps
+- **Integrations**: No Zoom, Teams, Meet, Webex, or Slack integration (Slido's biggest moat — Cisco owns them)
+- **PowerPoint/Slides plugin**: Slido has native Office add-in. We plan embed mode as alternative.
+- **Embed via iFrame**: Planned for Sprint 11
+- **Participant counter**: Planned for Sprint 11 (Slido shows "X people here")
+- **Question archiving**: Planned for Sprint 11
+- **Question pinning/starring**: Planned for Sprint 11
+- **Session context for AI**: Planned for Sprint 11 (upload docs, URLs for smarter AI answers)
+
+### Features Only We Have (No Competitor Offers)
+- Real-time AI question clustering
+- AI-generated summary questions per cluster
+- "Q" AI assistant branding on cluster cards
+- Inline-editable AI summary questions
+- FAQ library that carries across recurring sessions
+- AI-suggested answers from session context
+- Free moderation, export, branding, analytics (all paywalled by competitors)
 
 ---
 

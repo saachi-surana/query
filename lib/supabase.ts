@@ -35,6 +35,8 @@ export type Question = {
   approved: boolean
   suggested_answer: string | null
   upvotes: number
+  is_pinned: boolean
+  archived: boolean
   created_at: string
 }
 
@@ -91,6 +93,16 @@ export type WordCloudEntry = {
   word_cloud_id: string
   word: string
   device_id: string | null
+  created_at: string
+}
+
+export type SessionContext = {
+  id: string
+  session_id: string
+  content_type: 'document' | 'url' | 'previous_session' | 'description'
+  content_text: string
+  source_url: string | null
+  file_name: string | null
   created_at: string
 }
 

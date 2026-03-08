@@ -60,6 +60,39 @@
 import { supabase, Cluster } from './supabase'
 import { aiComplete } from './ai-provider'
 
+const MAX_CONTEXT_LENGTH = 10000
+
+/**
+ * Fetch all session context entries and concatenate into a single string.
+ * Gracefully handles the case where the session_context table doesn't exist yet.
+ */
+export async function getSessionContext(sessionId: string): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('session_context')
+      .select('content_type, content_text, file_name')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+
+    if (error || !data || data.length === 0) return ''
+
+    let combined = data.map(ctx => {
+      const label = ctx.file_name || ctx.content_type
+      return `[${label}]: ${ctx.content_text}`
+    }).join('\n\n---\n\n')
+
+    // Truncate to stay within token limits
+    if (combined.length > MAX_CONTEXT_LENGTH) {
+      combined = combined.slice(0, MAX_CONTEXT_LENGTH) + '\n\n[Context truncated]'
+    }
+
+    return combined
+  } catch {
+    // Table may not exist yet — return empty
+    return ''
+  }
+}
+
 function hasNoAIProvider(): boolean {
   const geminiKey = process.env.GEMINI_API_KEY
   const anthropicKey = process.env.ANTHROPIC_API_KEY
@@ -77,7 +110,8 @@ export async function clusterQuestion(
   questionText: string,
   existingClusters: Pick<Cluster, 'id' | 'title' | 'summary_question'>[],
   sessionId: string,
-  sessionDescription: string | null
+  sessionDescription: string | null,
+  contextOverride?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (hasNoAIProvider()) {
     console.warn('Clustering: No AI provider configured — skipping clustering for question', questionId)
@@ -85,6 +119,9 @@ export async function clusterQuestion(
   }
 
   try {
+    // Fetch session context if not provided
+    const sessionContext = contextOverride !== undefined ? contextOverride : await getSessionContext(sessionId)
+
     const clusterList =
       existingClusters.length > 0
         ? existingClusters
@@ -111,9 +148,13 @@ JSON only. No explanation. No markdown.`
 
     console.log('Clustering: Calling AI for question', questionId, '— existing clusters:', existingClusters.length)
 
+    const systemPrompt = sessionContext
+      ? `You are organizing questions from a live Q&A session into topic clusters. Use this session context to better understand the topics and terminology:\n\n${sessionContext}\n\nBe concise. Respond only with valid JSON.`
+      : 'You are organizing questions from a live Q&A session into topic clusters. Be concise. Respond only with valid JSON.'
+
     const rawText = (await aiComplete(
       userPrompt,
-      'You are organizing questions from a live Q&A session into topic clusters. Be concise. Respond only with valid JSON.'
+      systemPrompt
     )).trim()
 
     console.log('Clustering: AI response for question', questionId, ':', rawText.slice(0, 300))
@@ -234,20 +275,22 @@ export async function updateClusterSummary(clusterId: string): Promise<void> {
  */
 export async function batchClusterSession(
   sessionId: string,
-  sessionDescription: string | null
+  sessionDescription: string | null,
+  contextOverride?: string
 ): Promise<{ clustered: number; newClusters: number; merged: number }> {
   if (hasNoAIProvider()) {
     console.warn('batchClusterSession: No AI provider configured — skipping')
     return { clustered: 0, newClusters: 0, merged: 0 }
   }
 
-  // Fetch all approved unclustered questions
+  // Fetch all approved unclustered questions (exclude archived)
   const { data: unclusteredQuestions, error: fetchErr } = await supabase
     .from('questions')
     .select('id, text')
     .eq('session_id', sessionId)
     .eq('approved', true)
     .is('cluster_id', null)
+    .or('archived.eq.false,archived.is.null')
     .order('created_at', { ascending: true })
 
   if (fetchErr) {
@@ -270,10 +313,13 @@ export async function batchClusterSession(
 
   const clusters = existingClusters || []
 
+  // Fetch session context if not provided
+  const sessionContext = contextOverride !== undefined ? contextOverride : await getSessionContext(sessionId)
+
   // If only 1 unclustered question, use single-question clustering
   if (unclusteredQuestions.length === 1) {
     const q = unclusteredQuestions[0]
-    await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription)
+    await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription, sessionContext)
     return { clustered: 1, newClusters: 0, merged: 0 }
   }
 
@@ -306,9 +352,13 @@ Questions with the same cluster_key will be placed in the same new cluster.
 
 JSON array only. No explanation. No markdown.`
 
+    const batchSystemPrompt = sessionContext
+      ? `You are organizing questions from a live Q&A session into topic clusters. Use this session context to better understand the topics and terminology:\n\n${sessionContext}\n\nGroup similar questions together. Be concise. Respond only with valid JSON.`
+      : 'You are organizing questions from a live Q&A session into topic clusters. Group similar questions together. Be concise. Respond only with valid JSON.'
+
     const rawText = (await aiComplete(
       userPrompt,
-      'You are organizing questions from a live Q&A session into topic clusters. Group similar questions together. Be concise. Respond only with valid JSON.'
+      batchSystemPrompt
     )).trim()
 
     let parsed: Array<{
@@ -328,7 +378,7 @@ JSON array only. No explanation. No markdown.`
       console.warn('Batch clustering: JSON parse failed, falling back to individual')
       let clustered = 0
       for (const q of unclusteredQuestions) {
-        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription)
+        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription, sessionContext)
         clustered++
       }
       return { clustered, newClusters: 0, merged: 0 }
@@ -338,7 +388,7 @@ JSON array only. No explanation. No markdown.`
       // Fallback to individual
       let clustered = 0
       for (const q of unclusteredQuestions) {
-        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription)
+        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription, sessionContext)
         clustered++
       }
       return { clustered, newClusters: 0, merged: 0 }
@@ -420,7 +470,7 @@ JSON array only. No explanation. No markdown.`
     let clustered = 0
     for (const q of unclusteredQuestions) {
       try {
-        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription)
+        await clusterQuestion(q.id, q.text, clusters, sessionId, sessionDescription, sessionContext)
         clustered++
       } catch {
         // Skip individual failures

@@ -8,6 +8,7 @@ import { PollResults } from '@/components/PollResults'
 import { WordCloudDisplay } from '@/components/WordCloudDisplay'
 import { BrandOverride } from '@/components/BrandOverride'
 import { QRCodeSVG } from 'qrcode.react'
+import { usePresence } from '@/lib/use-presence'
 
 function PresentQuestionCard({ question, replies }: { question: Question; replies: Reply[] }) {
   const [showReplies, setShowReplies] = useState(false)
@@ -64,6 +65,7 @@ export default function PresentPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
+  const participantCount = usePresence(session?.id ?? null, 'host')
   const [activePoll, setActivePoll] = useState<Poll | null>(null)
   const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
   const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
@@ -300,6 +302,14 @@ export default function PresentPage() {
                 <h2 className="text-lg text-white/80 font-medium truncate">{session.title}</h2>
               </>
             )}
+            {participantCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium shrink-0">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {participantCount} here
+              </span>
+            )}
           </div>
 
           {/* Right: join code + URL — only shown when questions exist */}
@@ -370,6 +380,33 @@ export default function PresentPage() {
           </div>
         ) : (
           <div className="max-w-4xl mx-auto space-y-4">
+            {/* Pinned questions */}
+            {(() => {
+              const pinnedQuestions = approvedQuestions.filter((q) => q.is_pinned)
+              if (pinnedQuestions.length === 0) return null
+              return (
+                <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-6 transition-all">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-5 h-5 text-amber-500" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                    <span className="text-sm font-bold text-amber-700 uppercase tracking-wider">Pinned Questions</span>
+                  </div>
+                  <div className="space-y-2">
+                    {pinnedQuestions.sort((a, b) => b.upvotes - a.upvotes).map((q) => (
+                      <div key={q.id} className="rounded-xl border border-amber-200 bg-white p-4 flex items-start justify-between gap-4">
+                        <p className="text-lg text-slate-800 leading-relaxed flex-1">{q.text}</p>
+                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium bg-amber-100 text-amber-700">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                          {q.upvotes}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Highlighted / Discussing cluster */}
             {highlightedCluster && (() => {
               const clusterUpvotes = highlightedCluster.questions.reduce((s, q) => s + q.upvotes, 0)

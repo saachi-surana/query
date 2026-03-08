@@ -17,6 +17,11 @@ export function ClusterCard({
   onHighlight,
   onClaim,
   onSaveFaq,
+  onPin,
+  pinErrorQuestionId,
+  pinError,
+  onArchive,
+  onBulkArchive,
   sessionId,
   highlighted,
   muted,
@@ -31,6 +36,11 @@ export function ClusterCard({
   onHighlight?: (id: string | null) => void
   onClaim?: (id: string, name: string | null) => void
   onSaveFaq?: (cluster: ClusterWithQuestions) => void
+  onPin?: (id: string, pinned: boolean) => void
+  pinErrorQuestionId?: string | null
+  pinError?: string | null
+  onArchive?: (id: string, archived: boolean) => void
+  onBulkArchive?: (clusterId: string) => void
   sessionId?: string
   highlighted?: boolean
   muted: boolean
@@ -191,6 +201,9 @@ export function ClusterCard({
                   onMarkAnswered={onMarkQuestionAnswered}
                   onMarkUnanswered={onMarkQuestionUnanswered}
                   onReply={onReply}
+                  onPin={onPin}
+                  pinError={pinErrorQuestionId === q.id ? pinError : null}
+                  onArchive={onArchive}
                 />
               ))}
             </div>
@@ -210,8 +223,19 @@ export function ClusterCard({
             {muted ? 'Unmark Entire Cluster' : 'Mark Entire Cluster as Answered'}
           </button>
 
-          {/* Claim + FAQ buttons */}
+          {/* Claim + FAQ + Archive buttons */}
           <div className="flex gap-2">
+            {onBulkArchive && !muted && cluster.questions.length > 0 && (
+              <button
+                onClick={() => onBulkArchive(cluster.id)}
+                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center justify-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Archive All
+              </button>
+            )}
             {onClaim && !muted && (
               <button
                 onClick={() => onClaim(cluster.id, cluster.claimed_by ? null : prompt('Your name:') || null)}

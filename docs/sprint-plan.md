@@ -324,97 +324,6 @@ Cluster, Summary Question, Question Text, Author, Anonymous, Upvotes, Status, Re
 
 ---
 
-## Implementation Priority Matrix
-
-```
-                    HIGH IMPACT
-                        |
-     ┌──────────────────┼──────────────────┐
-     │                  |                  │
-     │  Presentation    │  AI Auto-Answer  │
-     │  Display View    │  (Sprint 3)      │
-     │                  |                  │
-     │  Moderation      │  Multi-Moderator │
-     │  Toggle          │  (Sprint 3)      │
-     │                  |                  │
-LOW ─┼──────────────────┼──────────────────┼─ HIGH
-EFFORT│                 |                  │  EFFORT
-     │  Export CSV      │  FAQ Library     │
-     │                  |  (Sprint 3)      │
-     │  Session Desc    │                  │
-     │  on Join Page    │  Pre-Session     │
-     │                  |  Collection      │
-     │  Better Empty    │                  │
-     │  States          │  Analytics       │
-     │                  |                  │
-     └──────────────────┼──────────────────┘
-                        |
-                    LOW IMPACT
-```
-
----
-
-## Sprint 1 Execution Order
-
-Do these in this exact order for maximum incremental value:
-
-| # | Task | Effort | Why This Order |
-|---|------|--------|---------------|
-| 1 | Session description on join page | 30 min | Quick win, warm-up |
-| 2 | Export session data (CSV) | 1 hr | Quick win, immediate differentiator vs Slido |
-| 3 | Better empty states | 1-2 hrs | Improves first impression |
-| 4 | Presentation display view | 3-4 hrs | Required for real events |
-| 5 | Question moderation toggle | 4-5 hrs | Most complex, biggest value |
-
-**Total Sprint 1 estimate**: ~10-12 hrs of implementation
-
----
-
-## Sprint 2 Execution Order
-
-| # | Task | Effort | Why This Order |
-|---|------|--------|---------------|
-| 1 | "Discussing now" highlight | 2-3 hrs | Quick to build, great UX |
-| 2 | Attendee cluster view | 2-3 hrs | Leverages existing cluster data |
-| 3 | Post-session follow-up | 2-3 hrs | Unique differentiator |
-| 4 | Pre-session question collection | 2-3 hrs | Builds on existing flow |
-| 5 | Session analytics | 3-4 hrs | Nice-to-have, polishing |
-
-**Total Sprint 2 estimate**: ~12-16 hrs of implementation
-
----
-
-## Files That Will Be Created/Modified
-
-### New Files
-```
-app/present/[code]/page.tsx          # Presentation display view (Sprint 1)
-supabase-add-moderation.sql          # Moderation migration (Sprint 1)
-docs/competitive-analysis.md         # This analysis
-docs/sprint-plan.md                  # This plan
-```
-
-### Modified Files
-```
-# Sprint 1
-app/session/[code]/page.tsx          # Export, moderation, empty states
-app/join/[code]/page.tsx             # Session description, moderation status
-app/api/cluster/route.ts             # Only cluster approved questions
-app/page.tsx                         # Better home page
-lib/supabase.ts                      # Updated types
-supabase-schema.sql                  # Updated schema
-
-# Sprint 2
-app/session/[code]/page.tsx          # Highlight, analytics, end session
-app/join/[code]/page.tsx             # Cluster view tab, pre-session, ended state
-app/present/[code]/page.tsx          # Highlighted cluster display
-app/create/page.tsx                  # Start time field
-lib/supabase.ts                      # Updated types
-supabase-schema.sql                  # Updated schema
-```
-
----
-
 ---
 
 ## Sprint 4: UI Rework + Dashboard + Recurring Sessions
@@ -832,32 +741,9 @@ CREATE TRIGGER on_host_reply_mark_answered
 
 ---
 
-### ACTION ITEM: Manual Mobile Review
-
-**Owner**: Shreya (personal review)
-**Priority**: High — do before Sprint 7
-
-Walk through every page on a real phone (or Chrome DevTools mobile mode at 375px):
-- Landing page: mesh gradient, cards, join input
-- Create page: form fields, date/time pickers, recurrence pills
-- Session dashboard: question cards, sidebar overlay, mobile action bar
-- Join page: question submission, upvoting, tabs
-- Present page: join code bubble vs title spacing (currently too close on mobile)
-- Analytics page: stats cards, charts, sidebar
-- Report page: stats, export button, questions list
-
-**Things to specifically check**:
-- Present page header: "Query" and session title overlap with the join code bubble on mobile — needs spacing or stacking fix
-- Touch targets: all buttons should be easy to tap (min 44px)
-- Text truncation: long session titles, long questions
-- Sidebar overlay: opens smoothly, backdrop dismisses, no content shift
-- Mobile action bar: code + Present buttons centered and tappable
-
----
-
 ## Sprint 7: Host Authentication & AI Model Integration
 
-**Status**: IN PROGRESS — 4/5 tasks done (7.4 AI Summary Question prominence remaining)
+**Status**: COMPLETED
 
 **Goal**: Add host authentication so each host owns their sessions, and upgrade the AI clustering engine to be cheaper, faster, and provider-agnostic. Research free-tier AI options to minimize costs.
 
@@ -1679,6 +1565,181 @@ app/settings/page.tsx                # Settings page (profile, defaults, appeara
 components/Sidebar.tsx               # Replace "Settings (coming soon)" with link to /settings
 middleware.ts                        # Add /settings to protected routes
 app/globals.css                      # Theme picker CSS variable support
+```
+
+---
+
+---
+
+## Sprint 11: Intelligence & Engagement Features
+
+**Status**: NOT STARTED
+
+**Goal**: Make the AI smarter with session context, add engagement features, and enable embedding for broader distribution.
+
+### 11.1 Session Context for AI (Smart Answers)
+**Priority**: Critical — this is our core AI differentiator
+**Estimated complexity**: Large
+
+**What it is**: Allow hosts to provide context that the AI uses when clustering questions and suggesting answers. Context can come from:
+- Uploaded documents (PDF, PowerPoint, Word docs)
+- Website URLs (crawled and indexed)
+- Previous session Q&A (for recurring meetings — automatically pull FAQ/answered questions from past sessions with same recurrence_parent_id)
+- Free-text description (already exists as session description)
+
+**What to do**:
+- Add file upload to session creation and settings (Supabase Storage)
+- Parse uploaded PDFs/PPTs server-side (use pdf-parse, pptx libraries)
+- Store extracted text in a `session_context` table (session_id, content_type, content_text, source_url)
+- For recurring sessions: auto-pull answered clusters + FAQ entries from previous instances
+- Pass context to AI prompts in clustering.ts and suggest-answer API
+- Add a "Context" section to session settings panel showing uploaded docs
+
+**Database changes**:
+- New table: `session_context` (id, session_id, content_type enum('document','url','previous_session','description'), content_text, source_url, file_name, created_at)
+
+**Files to create/modify**:
+- `app/api/parse-document/route.ts` — server-side document parsing
+- `lib/clustering.ts` — inject context into AI prompts
+- `app/api/suggest-answer/route.ts` — use context for better answers
+- `app/session/[code]/page.tsx` — context upload UI in settings
+- `app/create/page.tsx` — optional context upload during creation
+- `lib/supabase.ts` — new types
+
+**Dependencies**: None
+
+---
+
+### 11.2 Live Participant Counter
+**Priority**: Medium
+**Estimated complexity**: Small
+
+**What it is**: Show a live count of how many attendees are currently viewing the session. Uses Supabase Realtime Presence.
+
+**What to do**:
+- Use Supabase Realtime Presence API to track connected clients on join pages
+- Show "X people here" badge in session header (host view), join page header, and present page
+- Animate count changes (subtle pulse on increment)
+- Only count unique presence keys (deduplicate multiple tabs from same device)
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — presence badge in header
+- `app/join/[code]/page.tsx` — track presence + show count
+- `app/present/[code]/page.tsx` — show count
+
+**Dependencies**: None
+
+---
+
+### 11.3 Embed Mode (`/embed/[code]`)
+**Priority**: Medium
+**Estimated complexity**: Small-Medium
+
+**What it is**: A minimal, iframeable version of the join page. Hosts paste it into their website, Notion, LMS, etc.
+
+**What to do**:
+- Create `/embed/[code]` route — stripped-down join page (no header, no sidebar, just Q&A)
+- Add `X-Frame-Options: ALLOWALL` header for this route only
+- Provide embed code snippet on session dashboard ("Embed" button → copy iframe HTML)
+- Support query params: `?theme=light|dark`, `?tab=ask|all|topics`
+- Responsive sizing that fills the iframe container
+
+**Files to create**:
+- `app/embed/[code]/page.tsx` — minimal embeddable join view
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — add "Embed" button with copy-able iframe snippet
+- `next.config.js` or middleware — configure headers for embed route
+
+**Dependencies**: None
+
+---
+
+### 11.4 Question Archiving
+**Priority**: Low
+**Estimated complexity**: Small
+
+**What it is**: Host can archive approved questions they want to hide from the main view without deleting them.
+
+**What to do**:
+- Add `archived boolean default false` to questions table
+- Add "Archive" button on question cards (host view only)
+- Archived questions hidden from main view but visible in a collapsible "Archived" section
+- Archived questions excluded from clustering candidates
+- Bulk archive option ("Archive all in cluster")
+
+**Database changes**:
+- `ALTER TABLE questions ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false;`
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — archive button, archived section
+- `lib/supabase.ts` — update Question type
+- `app/api/cluster/route.ts` — exclude archived questions
+
+**Dependencies**: None
+
+---
+
+### 11.5 Question Pinning
+**Priority**: Low
+**Estimated complexity**: Small
+
+**What it is**: Host can pin 1-3 important questions to the top of the attendee view.
+
+**What to do**:
+- Add `is_pinned boolean default false` to questions table
+- Add "Pin" toggle on question cards (host view)
+- Pinned questions appear in a highlighted section at the top of attendee view
+- Limit to 3 pinned questions per session
+- Pinned questions also show prominently on present page
+
+**Database changes**:
+- `ALTER TABLE questions ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false;`
+
+**Files to modify**:
+- `app/session/[code]/page.tsx` — pin toggle button
+- `app/join/[code]/page.tsx` — pinned questions section at top
+- `app/present/[code]/page.tsx` — show pinned questions
+- `lib/supabase.ts` — update Question type
+
+**Dependencies**: None
+
+---
+
+### Sprint 11 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Participant counter (11.2) | 1-2 hrs | Quick win, immediate engagement boost |
+| 2 | Question pinning (11.5) | 1 hr | Simple DB field + UI toggle |
+| 3 | Question archiving (11.4) | 1-2 hrs | Simple DB field + UI |
+| 4 | Embed mode (11.3) | 2-3 hrs | New route, moderate effort |
+| 5 | Session context for AI (11.1) | 6-8 hrs | Most complex, highest impact |
+
+**Total Sprint 11 estimate**: ~12-16 hrs of implementation
+
+---
+
+### Sprint 11 Database Changes
+
+```sql
+-- Question archiving
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false;
+
+-- Question pinning
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false;
+
+-- Session context
+CREATE TABLE IF NOT EXISTS session_context (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES sessions(id) ON DELETE CASCADE NOT NULL,
+  content_type text NOT NULL CHECK (content_type IN ('document', 'url', 'previous_session', 'description')),
+  content_text text NOT NULL,
+  source_url text,
+  file_name text,
+  created_at timestamp with time zone DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_session_context_session_id ON session_context(session_id);
 ```
 
 ---

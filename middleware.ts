@@ -5,6 +5,13 @@ import type { NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } })
 
+  // Allow iframe embedding for /embed routes
+  if (request.nextUrl.pathname.startsWith('/embed')) {
+    response.headers.delete('X-Frame-Options')
+    response.headers.set('Content-Security-Policy', "frame-ancestors *")
+    return response
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

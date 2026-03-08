@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { clusterQuestion, batchClusterSession, cleanupEmptyClusters } from '@/lib/clustering'
+import { clusterQuestion, batchClusterSession, cleanupEmptyClusters, getSessionContext } from '@/lib/clustering'
 
 /**
  * POST /api/cluster
@@ -39,12 +39,16 @@ export async function POST(req: NextRequest) {
       console.error('Cluster API: Failed to fetch session', sessionId, ':', sessionErr)
     }
 
+    // Fetch session context (documents, URLs, etc.) for AI enrichment
+    const sessionContext = await getSessionContext(sessionId)
+
     // ---- Batch / Re-cluster mode ----
     if (mode === 'batch') {
       console.log('Cluster API: Batch re-cluster requested for session', sessionId)
       const result = await batchClusterSession(
         sessionId,
-        session?.description ?? null
+        session?.description ?? null,
+        sessionContext
       )
       // Clean up any empty clusters after batch
       const removed = await cleanupEmptyClusters(sessionId)
@@ -72,13 +76,19 @@ export async function POST(req: NextRequest) {
       // Fetch question text and approval status
       const { data: question, error: qErr } = await supabase
         .from('questions')
-        .select('text, approved, cluster_id')
+        .select('text, approved, cluster_id, archived')
         .eq('id', questionId)
         .single()
 
       if (qErr || !question) {
         console.error('Cluster API: Question not found', questionId, qErr)
         return NextResponse.json({ success: false, error: 'Question not found' }, { status: 404 })
+      }
+
+      // Skip clustering for archived questions
+      if (question.archived) {
+        console.log('Cluster API: Skipping archived question', questionId)
+        return NextResponse.json({ success: true, skipped: 'archived' })
       }
 
       // Skip clustering for unapproved questions (moderation is on)
@@ -112,7 +122,8 @@ export async function POST(req: NextRequest) {
         question.text,
         clusters || [],
         sessionId,
-        session?.description ?? null
+        session?.description ?? null,
+        sessionContext
       )
 
       if (!result.success) {

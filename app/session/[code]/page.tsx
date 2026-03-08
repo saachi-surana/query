@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry } from '@/lib/supabase'
+import { supabase, Session, Question, Cluster, Reply, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry, SessionContext } from '@/lib/supabase'
 import { ChevronIcon } from '@/components/ChevronIcon'
 import { Spinner } from '@/components/Spinner'
 import { QuestionRow } from '@/components/QuestionRow'
@@ -15,6 +15,7 @@ import { WordCloudCreate } from '@/components/WordCloudCreate'
 import { WordCloudDisplay } from '@/components/WordCloudDisplay'
 import { BrandOverride } from '@/components/BrandOverride'
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react'
+import { usePresence } from '@/lib/use-presence'
 
 export default function ModeratorPage() {
   const params = useParams()
@@ -44,7 +45,10 @@ export default function ModeratorPage() {
   const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
   const [wordCloudOpen, setWordCloudOpen] = useState(true)
   const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [embedModalOpen, setEmbedModalOpen] = useState(false)
+  const [embedCopied, setEmbedCopied] = useState(false)
   const qrCanvasRef = useRef<HTMLDivElement>(null)
+  const participantCount = usePresence(session?.id ?? null, 'host')
 
   useEffect(() => {
     setSidebarOpen(window.innerWidth >= 768)
@@ -52,11 +56,31 @@ export default function ModeratorPage() {
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set())
   const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
+  const [archivedOpen, setArchivedOpen] = useState(false)
+
+  // Session context state
+  const [contextEntries, setContextEntries] = useState<SessionContext[]>([])
+  const [contextUploading, setContextUploading] = useState(false)
+  const [contextUrl, setContextUrl] = useState('')
 
   const attendeeUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/join/${code}`
       : `/join/${code}`
+
+  const embedUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/embed/${code}`
+      : `/embed/${code}`
+
+  const embedSnippet = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0"></iframe>`
+
+  function copyEmbed() {
+    navigator.clipboard.writeText(embedSnippet).then(() => {
+      setEmbedCopied(true)
+      setTimeout(() => setEmbedCopied(false), 2000)
+    })
+  }
 
   // Load session
   useEffect(() => {
@@ -80,6 +104,24 @@ export default function ModeratorPage() {
     }
     loadSessions()
   }, [])
+
+  // Load session context entries
+  useEffect(() => {
+    if (!session) return
+    async function loadContext() {
+      try {
+        const { data } = await supabase
+          .from('session_context')
+          .select('*')
+          .eq('session_id', session!.id)
+          .order('created_at', { ascending: true })
+        setContextEntries(data || [])
+      } catch {
+        // Table may not exist yet
+      }
+    }
+    loadContext()
+  }, [session])
 
   // Load questions and clusters
   useEffect(() => {
@@ -246,6 +288,47 @@ export default function ModeratorPage() {
     setSession({ ...session, auto_suggest: newValue })
   }
 
+  async function handleContextFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !session) return
+    setContextUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/parse-document', { method: 'POST', body: formData })
+      const result = await res.json()
+      if (!res.ok) { alert(result.error || 'Failed to parse document'); return }
+      const { error } = await supabase.from('session_context').insert({
+        session_id: session.id, content_type: 'document' as const,
+        content_text: result.text, file_name: result.fileName, source_url: null,
+      })
+      if (error) { alert('Failed to save context. Make sure the session_context table exists.'); return }
+      const { data } = await supabase.from('session_context').select('*').eq('session_id', session.id).order('created_at', { ascending: true })
+      setContextEntries(data || [])
+    } catch { alert('Failed to upload document.') } finally { setContextUploading(false); e.target.value = '' }
+  }
+
+  async function handleAddContextUrl() {
+    if (!contextUrl.trim() || !session) return
+    setContextUploading(true)
+    try {
+      const { error } = await supabase.from('session_context').insert({
+        session_id: session.id, content_type: 'url' as const,
+        content_text: contextUrl.trim(), source_url: contextUrl.trim(), file_name: null,
+      })
+      if (error) { alert('Failed to save URL. Make sure the session_context table exists.'); return }
+      setContextUrl('')
+      const { data } = await supabase.from('session_context').select('*').eq('session_id', session.id).order('created_at', { ascending: true })
+      setContextEntries(data || [])
+    } catch { /* ignore */ } finally { setContextUploading(false) }
+  }
+
+  async function deleteContextEntry(entryId: string) {
+    if (!session) return
+    await supabase.from('session_context').delete().eq('id', entryId)
+    setContextEntries(prev => prev.filter(e => e.id !== entryId))
+  }
+
   async function approveQuestion(questionId: string) {
     await supabase.from('questions').update({ approved: true }).eq('id', questionId)
     // Trigger clustering for the newly approved question
@@ -278,6 +361,14 @@ export default function ModeratorPage() {
   async function markClusterUnanswered(clusterId: string) {
     await supabase.from('questions').update({ status: 'pending' }).eq('cluster_id', clusterId)
     await supabase.from('clusters').update({ status: 'unanswered' }).eq('id', clusterId)
+  }
+
+  async function archiveQuestion(questionId: string, archived: boolean) {
+    await supabase.from('questions').update({ archived }).eq('id', questionId)
+  }
+
+  async function bulkArchiveCluster(clusterId: string) {
+    await supabase.from('questions').update({ archived: true }).eq('cluster_id', clusterId)
   }
 
   async function claimCluster(clusterId: string, name: string | null) {
@@ -369,6 +460,28 @@ export default function ModeratorPage() {
     await markQuestionAnswered(questionId)
   }
 
+  const [pinError, setPinError] = useState<string | null>(null)
+  const [pinErrorQuestionId, setPinErrorQuestionId] = useState<string | null>(null)
+
+  async function handlePin(questionId: string, pinned: boolean) {
+    if (!session) return
+    setPinError(null)
+    setPinErrorQuestionId(null)
+
+    if (pinned) {
+      // Check max 3 pinned questions
+      const pinnedCount = questions.filter((q) => q.is_pinned && q.session_id === session.id).length
+      if (pinnedCount >= 3) {
+        setPinError('Maximum 3 pinned questions allowed. Unpin one first.')
+        setPinErrorQuestionId(questionId)
+        setTimeout(() => { setPinError(null); setPinErrorQuestionId(null) }, 4000)
+        return
+      }
+    }
+
+    await supabase.from('questions').update({ is_pinned: pinned }).eq('id', questionId)
+  }
+
   function exportCSV() {
     const escapeCSV = (s: string) => `"${s.replace(/"/g, '""')}"`;
     const rows = [['Cluster', 'Summary Question', 'Question', 'Author', 'Anonymous', 'Upvotes', 'Status', 'Replies', 'Timestamp']]
@@ -430,23 +543,27 @@ export default function ModeratorPage() {
   const approvedQuestions = questions.filter((q) => q.approved)
   const pendingReviewQuestions = questions.filter((q) => !q.approved)
 
-  // Build cluster+question structures (only from approved questions)
+  // Separate archived from active approved questions
+  const archivedQuestions = approvedQuestions.filter((q) => q.archived === true)
+  const activeApprovedQuestions = approvedQuestions.filter((q) => !q.archived)
+
+  // Build cluster+question structures (only from active approved questions — excludes archived)
   const unansweredClusters: ClusterWithQuestions[] = clusters
     .filter((c) => c.status === 'unanswered')
-    .map((c) => ({ ...c, questions: approvedQuestions.filter((q) => q.cluster_id === c.id) }))
+    .map((c) => ({ ...c, questions: activeApprovedQuestions.filter((q) => q.cluster_id === c.id) }))
 
   const answeredClusters: ClusterWithQuestions[] = clusters
     .filter((c) => c.status === 'answered')
-    .map((c) => ({ ...c, questions: approvedQuestions.filter((q) => q.cluster_id === c.id) }))
+    .map((c) => ({ ...c, questions: activeApprovedQuestions.filter((q) => q.cluster_id === c.id) }))
 
-  const unclusteredQuestions = approvedQuestions.filter((q) => !q.cluster_id && q.status !== 'answered')
-  const answeredUnclusteredQuestions = approvedQuestions.filter((q) => !q.cluster_id && q.status === 'answered')
-  const answeredOrphanQuestions = approvedQuestions.filter(
+  const unclusteredQuestions = activeApprovedQuestions.filter((q) => !q.cluster_id && q.status !== 'answered')
+  const answeredUnclusteredQuestions = activeApprovedQuestions.filter((q) => !q.cluster_id && q.status === 'answered')
+  const answeredOrphanQuestions = activeApprovedQuestions.filter(
     (q) => q.status === 'answered' && q.cluster_id && clusters.find((c) => c.id === q.cluster_id)?.status === 'unanswered'
   )
   const hasAnswered = answeredClusters.length > 0 || answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0
 
-  const totalQuestions = approvedQuestions.length
+  const totalQuestions = activeApprovedQuestions.length
 
   if (notFound) {
     return (
@@ -532,6 +649,14 @@ export default function ModeratorPage() {
             <h1 className="text-lg font-medium truncate" style={{ color: 'var(--theme-header-text-muted)' }}>{session.title}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {participantCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {participantCount} attending
+              </span>
+            )}
             {/* Code badge + copy icon */}
             <button
               onClick={copyLink}
@@ -554,6 +679,15 @@ export default function ModeratorPage() {
               style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm3 3h3v3h-3v-3z" /></svg>
+            </button>
+            {/* Embed button */}
+            <button
+              onClick={() => setEmbedModalOpen(true)}
+              title="Embed this session"
+              className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
             </button>
             {/* Present mode */}
             <a
@@ -762,6 +896,11 @@ export default function ModeratorPage() {
                 onReply={handleHostReply}
                 onHighlight={highlightCluster}
                 onClaim={claimCluster}
+                onPin={handlePin}
+                pinErrorQuestionId={pinErrorQuestionId}
+                pinError={pinError}
+                onArchive={archiveQuestion}
+                onBulkArchive={bulkArchiveCluster}
                 sessionId={session.id}
                 highlighted={session.highlighted_cluster_id === c.id}
                 muted={false}
@@ -813,7 +952,7 @@ export default function ModeratorPage() {
             {unclusteredOpen && (
               <div className="space-y-3">
                 {unclusteredQuestions.map((q) => (
-                  <QuestionRow key={q.id} question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} />
+                  <QuestionRow key={q.id} question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} onPin={handlePin} pinError={pinErrorQuestionId === q.id ? pinError : null} onArchive={archiveQuestion} />
                 ))}
               </div>
             )}
@@ -881,6 +1020,9 @@ export default function ModeratorPage() {
                         onMarkAnswered={markQuestionAnswered}
                         onMarkUnanswered={markQuestionUnanswered}
                         onReply={handleHostReply}
+                        onPin={handlePin}
+                        pinError={pinErrorQuestionId === q.id ? pinError : null}
+                        onArchive={archiveQuestion}
                       />
                     ))}
                   </div>
@@ -899,11 +1041,50 @@ export default function ModeratorPage() {
                       onMarkQuestionUnanswered={markQuestionUnanswered}
                       onReply={handleHostReply}
                       onSaveFaq={saveFaqFromCluster}
+                      onPin={handlePin}
+                      pinErrorQuestionId={pinErrorQuestionId}
+                      pinError={pinError}
+                      onArchive={archiveQuestion}
                       sessionId={session.id}
                       muted={true}
                     />
                   ) : null
                 )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Archived questions */}
+        {archivedQuestions.length > 0 && (
+          <section className="space-y-3">
+            <button
+              onClick={() => setArchivedOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">
+                Archived
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-500">
+                {archivedQuestions.length}
+              </span>
+              <ChevronIcon open={archivedOpen} />
+            </button>
+
+            {archivedOpen && (
+              <div className="space-y-3">
+                {archivedQuestions.map((q) => (
+                  <QuestionRow
+                    key={q.id}
+                    question={q}
+                    replies={replies.filter((r) => r.question_id === q.id)}
+                    sessionId={session.id}
+                    onMarkAnswered={markQuestionAnswered}
+                    onMarkUnanswered={markQuestionUnanswered}
+                    onReply={handleHostReply}
+                    onArchive={archiveQuestion}
+                  />
+                ))}
               </div>
             )}
           </section>
@@ -1096,7 +1277,7 @@ export default function ModeratorPage() {
       {/* Floating Settings Panel */}
       <div className="fixed bottom-6 right-6 z-30">
         {settingsOpen && (
-          <div className="absolute bottom-14 right-0 w-80 bg-white rounded-xl border border-slate-200 shadow-xl p-5 space-y-4 animate-in slide-in-from-bottom-2">
+          <div className="absolute bottom-14 right-0 w-80 max-h-[70vh] overflow-y-auto bg-white rounded-xl border border-slate-200 shadow-xl p-5 space-y-4 animate-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-900 text-sm">Session Settings</h3>
               <button onClick={() => setSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">&times;</button>
@@ -1129,6 +1310,56 @@ export default function ModeratorPage() {
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${session.auto_suggest ? 'translate-x-4' : ''}`} />
               </button>
             </label>
+
+            {/* Session Context */}
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Session Context</p>
+              <p className="text-xs text-slate-400">Upload docs or add URLs for smarter AI clustering and answers.</p>
+
+              {/* File upload */}
+              <label className={`flex items-center justify-center gap-1.5 w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors text-sm text-slate-500 ${contextUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                {contextUploading ? 'Uploading...' : 'Upload document'}
+                <input type="file" accept=".pdf,.pptx,.docx,.txt,.md" onChange={handleContextFileUpload} className="hidden" disabled={contextUploading} />
+              </label>
+
+              {/* URL input */}
+              <div className="flex gap-1.5">
+                <input
+                  type="url"
+                  value={contextUrl}
+                  onChange={(e) => setContextUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-theme-primary focus:border-transparent"
+                />
+                <button
+                  onClick={handleAddContextUrl}
+                  disabled={!contextUrl.trim() || contextUploading}
+                  className="px-2.5 py-1.5 bg-theme-primary text-white rounded-lg text-xs font-medium hover:bg-theme-primary-hover disabled:opacity-40 transition-colors shrink-0"
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Existing entries */}
+              {contextEntries.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {contextEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-1.5 text-xs">
+                      <span className="text-slate-600 truncate mr-2">
+                        {entry.content_type === 'document' ? '\u{1F4C4}' : '\u{1F517}'} {entry.file_name || entry.source_url || entry.content_type}
+                      </span>
+                      <button
+                        onClick={() => deleteContextEntry(entry.id)}
+                        className="text-slate-400 hover:text-rose-500 transition-colors shrink-0"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2">
               <button
@@ -1196,6 +1427,37 @@ export default function ModeratorPage() {
             {/* Hidden canvas for PNG download */}
             <div ref={qrCanvasRef} className="hidden">
               <QRCodeCanvas value={attendeeUrl} size={400} level="M" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embed Modal */}
+      {embedModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setEmbedModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Embed this session</h3>
+              <button onClick={() => setEmbedModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors text-xl leading-none">&times;</button>
+            </div>
+            <p className="text-sm text-slate-500">Paste this snippet into your website, Notion page, LMS, or any platform that supports iframes.</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <code className="text-xs text-slate-700 break-all font-mono leading-relaxed">{embedSnippet}</code>
+            </div>
+            <div className="flex justify-end gap-3">
+              <a
+                href={embedUrl}
+                target="_blank"
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:border-theme-primary-light hover:text-theme-primary hover:bg-theme-primary-subtle transition-colors"
+              >
+                Preview
+              </a>
+              <button
+                onClick={copyEmbed}
+                className="px-4 py-2 rounded-lg bg-theme-primary text-sm font-medium text-white hover:bg-theme-primary-hover transition-colors"
+              >
+                {embedCopied ? 'Copied!' : 'Copy Snippet'}
+              </button>
             </div>
           </div>
         </div>

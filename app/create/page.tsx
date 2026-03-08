@@ -53,6 +53,12 @@ export default function CreatePage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [defaultLogoUrl, setDefaultLogoUrl] = useState<string | null>(null)
 
+  // Session context state
+  const [contextFile, setContextFile] = useState<File | null>(null)
+  const [contextFileName, setContextFileName] = useState<string | null>(null)
+  const [contextParsedText, setContextParsedText] = useState<string | null>(null)
+  const [contextParsing, setContextParsing] = useState(false)
+
   useEffect(() => {
     getUser().then((user) => {
       if (user) setUserId(user.id)
@@ -107,6 +113,40 @@ export default function CreatePage() {
     } finally {
       setLogoUploading(false)
     }
+  }
+
+  async function handleContextSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setContextFile(file)
+    setContextFileName(file.name)
+    setContextParsing(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/parse-document', { method: 'POST', body: formData })
+      const result = await res.json()
+      if (!res.ok) {
+        setError(result.error || 'Failed to parse document')
+        setContextFile(null)
+        setContextFileName(null)
+        return
+      }
+      setContextParsedText(result.text)
+      setContextFileName(result.fileName)
+    } catch {
+      setError('Failed to parse document.')
+      setContextFile(null)
+      setContextFileName(null)
+    } finally {
+      setContextParsing(false)
+    }
+  }
+
+  function removeContext() {
+    setContextFile(null)
+    setContextFileName(null)
+    setContextParsedText(null)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -186,6 +226,22 @@ export default function CreatePage() {
       }
     }
 
+    // Save session context if a document was uploaded
+    if (contextParsedText && parentId) {
+      try {
+        await supabase.from('session_context').insert({
+          session_id: parentId,
+          content_type: 'document' as const,
+          content_text: contextParsedText,
+          file_name: contextFileName,
+          source_url: null,
+        })
+      } catch {
+        // Table may not exist yet — non-critical
+        console.warn('Could not save session context — session_context table may not exist yet.')
+      }
+    }
+
     router.push(`/session/${parentCode}`)
   }
 
@@ -247,6 +303,31 @@ export default function CreatePage() {
               className={`${inputClasses} resize-none`}
             />
             <p className="text-xs text-slate-400">Used by AI to better group questions into topics.</p>
+          </div>
+
+          {/* Session Context (optional) */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700">
+              Session Context <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <p className="text-xs text-slate-400">Upload a document (PDF, PPTX, DOCX, TXT, MD) to give AI more context for clustering and answer suggestions.</p>
+            {contextFileName ? (
+              <div className="flex items-center justify-between bg-slate-50 rounded-2xl border border-slate-100 px-4 py-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <span className="text-sm text-slate-700 truncate">{contextFileName}</span>
+                  {contextParsing && <span className="text-xs text-slate-400">Parsing...</span>}
+                  {contextParsedText && <span className="text-xs text-emerald-600">Ready</span>}
+                </div>
+                <button type="button" onClick={removeContext} className="text-sm text-rose-500 hover:text-rose-700 transition-colors shrink-0 ml-2">Remove</button>
+              </div>
+            ) : (
+              <label className={`flex items-center justify-center gap-2 w-full px-4 py-4 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-colors ${contextParsing ? 'opacity-50 pointer-events-none' : ''}`}>
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                <span className="text-sm text-slate-500">{contextParsing ? 'Parsing document...' : 'Upload document'}</span>
+                <input type="file" accept=".pdf,.pptx,.docx,.txt,.md" onChange={handleContextSelect} className="hidden" disabled={contextParsing} />
+              </label>
+            )}
           </div>
 
           {/* Date + Time split */}

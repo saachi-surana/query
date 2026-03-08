@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase, Session, Question, Reply, Cluster, ClusterWithQuestions, Poll, WordCloud, WordCloudEntry } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/device-id'
+import { usePresence } from '@/lib/use-presence'
 import { PollVote } from '@/components/PollVote'
 import { PollResults } from '@/components/PollResults'
 import { WordCloudSubmit } from '@/components/WordCloudSubmit'
@@ -119,6 +120,9 @@ export default function JoinPage() {
   // Word cloud
   const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
   const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
+
+  // Presence
+  const participantCount = usePresence(session?.id ?? null, 'attendee')
 
   // Similarity
   const [similarQuestions, setSimilarQuestions] = useState<Question[]>([])
@@ -493,6 +497,14 @@ export default function JoinPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-medium truncate" style={{ color: 'var(--theme-header-text-muted)' }}>{session.title}</h1>
           </div>
+          {participantCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              {participantCount} here
+            </span>
+          )}
         </div>
       </header>
 
@@ -703,7 +715,67 @@ export default function JoinPage() {
                 <p className="text-sm mt-1">Be the first to ask!</p>
               </div>
             ) : (
-              [...questions].filter((q) => q.approved).sort((a, b) => b.upvotes - a.upvotes).map((q) => {
+              <>
+              {/* Pinned questions section */}
+              {(() => {
+                const pinnedQuestions = questions.filter((q) => q.approved && q.is_pinned)
+                if (pinnedQuestions.length === 0) return null
+                return (
+                  <div className="space-y-2 mb-2">
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Pinned
+                    </p>
+                    {pinnedQuestions.sort((a, b) => b.upvotes - a.upvotes).map((q) => {
+                      const qReplies = replies.filter((r) => r.question_id === q.id)
+                      return (
+                        <div key={q.id} className="bg-amber-50 rounded-2xl border border-amber-200 p-4 flex items-start gap-3">
+                          <button
+                            onClick={() => handleUpvote(q.id)}
+                            className={`shrink-0 flex flex-col items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              upvotedIds.has(q.id)
+                                ? 'bg-amber-200 text-amber-700'
+                                : 'bg-amber-100 hover:bg-amber-200 text-amber-600'
+                            }`}
+                          >
+                            <span>▲</span>
+                            <span>{q.upvotes}</span>
+                          </button>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-start gap-2">
+                              <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                              </svg>
+                              <p className="text-sm text-slate-900">{q.text}</p>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400">
+                                  {q.is_anonymous ? 'Anonymous' : q.author_name || 'Anonymous'}
+                                </span>
+                                <span className="text-xs text-slate-300">·</span>
+                                <ReplyThread replies={qReplies} onReply={(text) => handleReply(q.id, text)} />
+                              </div>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  q.status === 'answered'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-amber-100 text-amber-600'
+                                }`}
+                              >
+                                {q.status === 'answered' ? 'Answered' : 'Pending'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+              {[...questions].filter((q) => q.approved && !q.is_pinned).sort((a, b) => b.upvotes - a.upvotes).map((q) => {
                 const qReplies = replies.filter((r) => r.question_id === q.id)
                 return (
                   <div key={q.id} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-start gap-3">
@@ -742,6 +814,7 @@ export default function JoinPage() {
                   </div>
                 )
               })
+              </>
             )}
           </div>
         )}

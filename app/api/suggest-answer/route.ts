@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { aiComplete } from '@/lib/ai-provider'
+import { getSessionContext } from '@/lib/clustering'
 
 export async function POST(req: NextRequest) {
   const geminiKey = process.env.GEMINI_API_KEY
@@ -48,9 +49,19 @@ export async function POST(req: NextRequest) {
       // faq_entries table may not exist yet, ignore
     }
 
+    // Fetch uploaded session context (documents, URLs, etc.)
+    const sessionContextText = await getSessionContext(sessionId)
+    const contextSection = sessionContextText
+      ? `\n\nSession reference material:\n${sessionContextText}`
+      : ''
+
+    const systemPrompt = sessionContextText
+      ? `You are a helpful assistant drafting concise answers for a live Q&A session host. Use the provided session reference material to give accurate, informed answers. Write a brief, clear suggested answer. Be direct and informative. 2-3 sentences max.`
+      : 'You are a helpful assistant drafting concise answers for a live Q&A session host. Write a brief, clear suggested answer. Be direct and informative. 2-3 sentences max.'
+
     const answer = (await aiComplete(
-      `Session context: ${session?.description || 'A live Q&A session.'}${faqContext}\n\nQuestion from attendee: ${question.text}\n\nDraft a suggested answer:`,
-      'You are a helpful assistant drafting concise answers for a live Q&A session host. Write a brief, clear suggested answer. Be direct and informative. 2-3 sentences max.'
+      `Session context: ${session?.description || 'A live Q&A session.'}${faqContext}${contextSection}\n\nQuestion from attendee: ${question.text}\n\nDraft a suggested answer:`,
+      systemPrompt
     )).trim()
 
     if (answer) {
