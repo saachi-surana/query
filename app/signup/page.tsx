@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signUp } from '@/lib/auth'
 
-export default function SignupPage() {
+function SignupPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -194,5 +194,13 @@ export default function SignupPage() {
         )}
       </div>
     </main>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-theme-mesh-base" />}>
+      <SignupPageInner />
+    </Suspense>
   )
 }
