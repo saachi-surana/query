@@ -818,7 +818,7 @@ export default function JoinPage() {
                     </div>
                   </div>
                 )
-              })
+              })}
               </>
             )}
           </div>
