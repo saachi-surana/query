@@ -7,8 +7,10 @@ import { MeshHeader } from '@/components/MeshHeader'
 import { PollResults } from '@/components/PollResults'
 import { WordCloudDisplay } from '@/components/WordCloudDisplay'
 import { BrandOverride } from '@/components/BrandOverride'
+import { ReactionOverlay } from '@/components/ReactionOverlay'
 import { QRCodeSVG } from 'qrcode.react'
 import { usePresence } from '@/lib/use-presence'
+import { useReactions } from '@/lib/use-reactions'
 
 function PresentQuestionCard({ question, replies }: { question: Question; replies: Reply[] }) {
   const [showReplies, setShowReplies] = useState(false)
@@ -66,6 +68,7 @@ export default function PresentPage() {
   const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
   const participantCount = usePresence(session?.id ?? null, 'host')
+  const { reactions } = useReactions(session?.id ?? null)
   const [activePoll, setActivePoll] = useState<Poll | null>(null)
   const [activeWordCloud, setActiveWordCloud] = useState<WordCloud | null>(null)
   const [wordCloudEntries, setWordCloudEntries] = useState<WordCloudEntry[]>([])
@@ -508,6 +511,9 @@ export default function PresentPage() {
           </div>
         </div>
       )}
+
+      {/* Floating emoji reactions */}
+      <ReactionOverlay reactions={reactions} />
     </main>
   )
 }

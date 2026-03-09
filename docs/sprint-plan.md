@@ -1573,7 +1573,7 @@ app/globals.css                      # Theme picker CSS variable support
 
 ## Sprint 11: Intelligence & Engagement Features
 
-**Status**: NOT STARTED
+**Status**: COMPLETED
 
 **Goal**: Make the AI smarter with session context, add engagement features, and enable embedding for broader distribution.
 
@@ -1743,6 +1743,70 @@ CREATE INDEX IF NOT EXISTS idx_session_context_session_id ON session_context(ses
 ```
 
 ---
+
+---
+
+## Sprint 12: Engagement & Cross-Session Intelligence
+
+**Status**: IN PROGRESS
+
+**Goal**: Add real-time audience engagement features and cross-session AI intelligence.
+
+### 12.1 Audience Reactions
+**Priority**: Medium
+**Estimated complexity**: Medium
+
+**What it is**: Attendees can send emoji reactions (heart, clap, mind-blown, thumbs up, fire, laugh) that animate across the present page and session dashboard. Creates energy and engagement without requiring a full question.
+
+**What to do**:
+- Create a reaction bar on the join page with 6 emoji buttons
+- When clicked, send the reaction to a Supabase channel (realtime broadcast, not a table — reactions are ephemeral)
+- On the present page and session dashboard, animate floating emojis rising from bottom to top, fading out after ~3 seconds
+- Rate limit: max 1 reaction per second per user to prevent spam
+- Reactions should be fun but not distracting — small emojis, subtle animation, short duration
+
+**Files to create**:
+- `components/ReactionBar.tsx` — emoji button row for attendees
+- `components/ReactionOverlay.tsx` — floating emoji animation overlay
+
+**Files to modify**:
+- `app/join/[code]/page.tsx` — add ReactionBar
+- `app/present/[code]/page.tsx` — add ReactionOverlay
+- `app/session/[code]/page.tsx` — add ReactionOverlay
+
+**Dependencies**: None
+
+---
+
+### 12.2 Cross-Session AI Intelligence
+**Priority**: Medium
+**Estimated complexity**: Large
+
+**What it is**: For recurring sessions, AI automatically identifies trends across sessions. "This topic came up in your last 3 all-hands." Uses existing FAQ library + session context infrastructure.
+
+**What to do**:
+- When a session has `recurrence_parent_id`, auto-fetch answered clusters + FAQ entries from previous sibling sessions
+- Save as `previous_session` type context entries in `session_context` table
+- Show cross-session trend insights on the analytics page
+- AI generates: "Compensation questions increased 40% over 3 sessions", "This is a new topic not seen before"
+
+**Files to modify**:
+- `lib/clustering.ts` — auto-pull previous session context for recurring sessions
+- `app/analytics/page.tsx` — cross-session trend section
+- `app/session/[code]/page.tsx` — "Recurring insights" section
+
+**Dependencies**: 11.1 (session context infrastructure)
+
+---
+
+### Sprint 12 Execution Order
+
+| # | Task | Effort | Why This Order |
+|---|------|--------|---------------|
+| 1 | Audience reactions (12.1) | 3-4 hrs | Fun, visible engagement feature |
+| 2 | Cross-session intelligence (12.2) | 5-6 hrs | Builds on session context from Sprint 11 |
+
+**Total Sprint 12 estimate**: ~8-10 hrs of implementation
 
 ---
 

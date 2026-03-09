@@ -14,8 +14,10 @@ import { PollResults } from '@/components/PollResults'
 import { WordCloudCreate } from '@/components/WordCloudCreate'
 import { WordCloudDisplay } from '@/components/WordCloudDisplay'
 import { BrandOverride } from '@/components/BrandOverride'
+import { ReactionOverlay } from '@/components/ReactionOverlay'
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react'
 import { usePresence } from '@/lib/use-presence'
+import { useReactions } from '@/lib/use-reactions'
 
 export default function ModeratorPage() {
   const params = useParams()
@@ -49,6 +51,7 @@ export default function ModeratorPage() {
   const [embedCopied, setEmbedCopied] = useState(false)
   const qrCanvasRef = useRef<HTMLDivElement>(null)
   const participantCount = usePresence(session?.id ?? null, 'host')
+  const { reactions } = useReactions(session?.id ?? null)
 
   useEffect(() => {
     setSidebarOpen(window.innerWidth >= 768)
@@ -1462,6 +1465,9 @@ export default function ModeratorPage() {
           </div>
         </div>
       )}
+
+      {/* Floating emoji reactions */}
+      <ReactionOverlay reactions={reactions} />
     </main>
   )
 }

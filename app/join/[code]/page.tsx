@@ -10,6 +10,8 @@ import { PollResults } from '@/components/PollResults'
 import { WordCloudSubmit } from '@/components/WordCloudSubmit'
 import { WordCloudDisplay } from '@/components/WordCloudDisplay'
 import { BrandOverride } from '@/components/BrandOverride'
+import { ReactionBar } from '@/components/ReactionBar'
+import { useReactions } from '@/lib/use-reactions'
 
 const MAX_CHARS = 500
 const DEBOUNCE_MS = 400
@@ -123,6 +125,9 @@ export default function JoinPage() {
 
   // Presence
   const participantCount = usePresence(session?.id ?? null, 'attendee')
+
+  // Reactions
+  const { sendReaction } = useReactions(session?.id ?? null)
 
   // Similarity
   const [similarQuestions, setSimilarQuestions] = useState<Question[]>([])
@@ -952,6 +957,13 @@ export default function JoinPage() {
         )}
         </div>
       </div>
+
+      {/* Reaction bar - fixed at bottom */}
+      {!session?.ended_at && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+          <ReactionBar onReact={sendReaction} />
+        </div>
+      )}
     </main>
   )
 }
