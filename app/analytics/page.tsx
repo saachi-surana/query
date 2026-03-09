@@ -360,6 +360,105 @@ export default function AnalyticsPage() {
             </div>
           </section>
         )}
+        {/* Cross-Session Recurring Trends */}
+        {(() => {
+          // Group sessions by recurrence_parent_id
+          const seriesMap = new Map<string, Session[]>()
+          sessions.forEach(s => {
+            if (s.recurrence_parent_id) {
+              const key = s.recurrence_parent_id
+              if (!seriesMap.has(key)) seriesMap.set(key, [])
+              seriesMap.get(key)!.push(s)
+            }
+          })
+          // Only show series with 2+ sessions
+          const series = Array.from(seriesMap.entries()).filter(([, ss]) => ss.length >= 2)
+          if (series.length === 0) return null
+
+          return (
+            <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                Recurring Series Trends
+              </h2>
+              <div className="space-y-6">
+                {series.map(([parentId, seriesSessions]) => {
+                  const sortedSessions = [...seriesSessions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                  const parentSession = sessions.find(s => s.id === parentId)
+                  const seriesTitle = parentSession?.title || sortedSessions[0]?.title || 'Recurring Series'
+
+                  // Compute topic frequency for this series
+                  const seriesTopics = new Map<string, number>()
+                  sortedSessions.forEach(s => {
+                    const sessionClusters = clusters.filter(c => c.session_id === s.id)
+                    sessionClusters.forEach(c => {
+                      const key = c.title.toLowerCase().trim()
+                      seriesTopics.set(key, (seriesTopics.get(key) || 0) + 1)
+                    })
+                  })
+                  const topSeriesTopics = Array.from(seriesTopics.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8)
+
+                  // Questions per session for engagement trend
+                  const engagementData = sortedSessions.map(s => {
+                    const sqs = questions.filter(q => q.session_id === s.id)
+                    return { title: s.title, count: sqs.length }
+                  })
+                  const maxQ = Math.max(...engagementData.map(d => d.count), 1)
+
+                  return (
+                    <div key={parentId} className="border border-slate-100 rounded-xl p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">{seriesTitle}</h3>
+                          <p className="text-xs text-slate-400">{sortedSessions.length} sessions in series</p>
+                        </div>
+                        <span className="text-xs text-slate-400">{new Date(sortedSessions[0].created_at).toLocaleDateString()} - {new Date(sortedSessions[sortedSessions.length - 1].created_at).toLocaleDateString()}</span>
+                      </div>
+
+                      {/* Top recurring topics */}
+                      {topSeriesTopics.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-slate-500 font-medium">Top Recurring Topics</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {topSeriesTopics.map(([topic, count]) => (
+                              <span key={topic} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-theme-primary-subtle text-theme-primary-hover text-xs font-medium">
+                                {topic.charAt(0).toUpperCase() + topic.slice(1)}
+                                <span className="text-[10px] opacity-70">{count}x</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Engagement trend mini chart */}
+                      {engagementData.length > 1 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-slate-500 font-medium">Questions Per Session</p>
+                          <div className="space-y-1">
+                            {engagementData.map((d, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 w-20 truncate shrink-0">{d.title}</span>
+                                <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                                  <div
+                                    className="h-3 rounded-full bg-theme-primary transition-all"
+                                    style={{ width: `${Math.max((d.count / maxQ) * 100, 3)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-500 w-6 text-right shrink-0">{d.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })()}
           </div>
         </div>
       </div>

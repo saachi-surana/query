@@ -66,6 +66,18 @@ export default function ModeratorPage() {
   const [contextUploading, setContextUploading] = useState(false)
   const [contextUrl, setContextUrl] = useState('')
 
+  // Cross-session recurring insights state
+  const [recurringInsights, setRecurringInsights] = useState<{
+    recurringTopics: Array<{ topic: string; sessionCount: number; totalQuestions: number; trend: 'rising' | 'falling' | 'stable' | 'new'; sessions: string[] }>
+    newTopics: string[]
+    consistentTopics: string[]
+    totalSessions: number
+    averageQuestionsPerSession: number
+  } | null>(null)
+  const [aiInsightsText, setAiInsightsText] = useState<string | null>(null)
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false)
+  const [insightsOpen, setInsightsOpen] = useState(false)
+
   const attendeeUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/join/${code}`
@@ -94,6 +106,27 @@ export default function ModeratorPage() {
     }
     load()
   }, [code])
+
+  // Load recurring insights if session is part of a recurring series
+  useEffect(() => {
+    if (!session?.recurrence_parent_id) return
+    async function loadInsights() {
+      try {
+        const res = await fetch('/api/cross-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: session!.id, action: 'insights' }),
+        })
+        const data = await res.json()
+        if (data.success && data.insights) {
+          setRecurringInsights(data.insights)
+        }
+      } catch {
+        // Cross-session insights are non-critical
+      }
+    }
+    loadInsights()
+  }, [session?.id, session?.recurrence_parent_id])
 
   // Load all sessions for sidebar
   useEffect(() => {
@@ -1271,6 +1304,128 @@ export default function ModeratorPage() {
                 </div>
               )
             })()}
+          </section>
+        )}
+
+        {/* Recurring Session Insights */}
+        {session?.recurrence_parent_id && recurringInsights && (
+          <section className="space-y-3">
+            <button
+              onClick={() => setInsightsOpen((o) => !o)}
+              className="flex items-center gap-2 group"
+            >
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                Recurring Session Insights
+              </h2>
+              <ChevronIcon open={insightsOpen} />
+            </button>
+            {insightsOpen && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
+                {/* Series summary */}
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-slate-900">{recurringInsights.totalSessions}</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">Sessions</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-theme-primary">{recurringInsights.averageQuestionsPerSession}</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">Avg Questions</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-slate-900">{recurringInsights.recurringTopics.length}</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">Total Topics</p>
+                  </div>
+                </div>
+
+                {/* Consistent topics */}
+                {recurringInsights.consistentTopics.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Consistent Topics</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recurringInsights.consistentTopics.map((t) => (
+                        <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium border border-green-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New this session */}
+                {recurringInsights.newTopics.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">New This Session</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recurringInsights.newTopics.map((t) => (
+                        <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Topic frequency with trends */}
+                {recurringInsights.recurringTopics.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Topic Frequency</p>
+                    <div className="space-y-1.5">
+                      {recurringInsights.recurringTopics.slice(0, 10).map((t) => (
+                        <div key={t.topic} className="flex items-center gap-2 text-sm">
+                          <span className="shrink-0 w-5 text-center">
+                            {t.trend === 'rising' && <span className="text-green-500" title="Rising">&#9650;</span>}
+                            {t.trend === 'falling' && <span className="text-red-500" title="Falling">&#9660;</span>}
+                            {t.trend === 'stable' && <span className="text-slate-400" title="Stable">&#9679;</span>}
+                            {t.trend === 'new' && <svg className="w-4 h-4 text-amber-500 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>}
+                          </span>
+                          <span className="text-slate-700 truncate flex-1">{t.topic}</span>
+                          <span className="text-xs text-slate-400 shrink-0">{t.sessionCount}/{recurringInsights.totalSessions} sessions</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Insights */}
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  {aiInsightsText ? (
+                    <div className="bg-theme-primary-subtle border border-theme-primary-light rounded-xl px-4 py-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">AI Summary</p>
+                      <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--theme-primary-hover)' }}>
+                        {aiInsightsText}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        setAiInsightsLoading(true)
+                        try {
+                          const res = await fetch('/api/cross-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sessionId: session!.id, action: 'ai-insights' }),
+                          })
+                          const data = await res.json()
+                          if (data.success && data.text) {
+                            setAiInsightsText(data.text)
+                          }
+                        } catch {
+                          setAiInsightsText('Unable to generate AI insights at this time.')
+                        }
+                        setAiInsightsLoading(false)
+                      }}
+                      disabled={aiInsightsLoading}
+                      className="w-full px-4 py-2.5 bg-theme-primary text-white rounded-xl text-sm font-medium hover:bg-theme-primary-hover disabled:opacity-50 transition-colors"
+                    >
+                      {aiInsightsLoading ? 'Generating AI Summary...' : 'Generate AI Summary'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         )}
           </div>

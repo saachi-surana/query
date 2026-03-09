@@ -68,6 +68,14 @@ const MAX_CONTEXT_LENGTH = 10000
  */
 export async function getSessionContext(sessionId: string): Promise<string> {
   try {
+    // Auto-pull previous session context for recurring sessions (lazy, one-time)
+    try {
+      const { pullPreviousSessionContext } = await import('./cross-session')
+      await pullPreviousSessionContext(sessionId)
+    } catch {
+      // cross-session module may not exist or table not created yet
+    }
+
     const { data, error } = await supabase
       .from('session_context')
       .select('content_type, content_text, file_name')
