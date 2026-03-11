@@ -539,9 +539,11 @@ export default function JoinPage() {
         <div className="absolute top-[-80%] right-[10%] w-[30%] h-[300%] rounded-full blur-[60px]" style={{ background: 'var(--theme-mesh-5)' }} />
         <div className="absolute top-[-80%] right-[-10%] w-[25%] h-[300%] rounded-full blur-[40px]" style={{ background: 'var(--theme-mesh-base)' }} />
         <div className="relative flex items-baseline gap-3">
-          {session.logo_url && (
-            <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-7 max-w-[100px]" />
-          )}
+          {session.logo_url ? (
+            <div className="shrink-0 rounded-lg bg-white/95 p-1.5 flex items-center justify-center self-center">
+              <img src={session.logo_url} alt="Host logo" className="h-7 max-w-[100px] object-contain" decoding="async" />
+            </div>
+          ) : null}
           <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity shrink-0 tracking-tight">Query</a>
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <div className="flex-1 min-w-0">

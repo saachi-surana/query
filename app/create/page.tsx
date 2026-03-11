@@ -162,6 +162,11 @@ export default function CreatePage() {
 
     // Upload logo if selected
     const uploadedLogoUrl = await uploadLogo()
+    if (logoFile && !uploadedLogoUrl) {
+      setError('Logo upload failed. Make sure the "logos" storage bucket exists and is public in Supabase, or remove the logo and try again.')
+      setLoading(false)
+      return
+    }
 
     let parentCode: string | null = null
     let parentId: string | null = null

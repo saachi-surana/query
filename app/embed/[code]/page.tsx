@@ -460,6 +460,11 @@ function EmbedPageInner() {
       {/* Minimal top bar with session title + tabs */}
       <div className="bg-white border-b border-slate-200 shrink-0">
         <div className="px-3 py-2 flex items-center gap-2">
+          {session.logo_url ? (
+            <div className="shrink-0 rounded-md bg-slate-50 p-1 flex items-center justify-center">
+              <img src={session.logo_url} alt="Host logo" className="h-6 max-w-[80px] object-contain" decoding="async" />
+            </div>
+          ) : null}
           <h1 className="text-sm font-semibold text-slate-900 truncate flex-1">{session.title}</h1>
           {session.ended_at && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 shrink-0">

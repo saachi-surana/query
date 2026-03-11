@@ -697,9 +697,11 @@ export default function ModeratorPage() {
           <button onClick={() => setSidebarOpen((o) => !o)} className="self-center shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <svg className="w-5 h-5 text-theme-primary-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          {session.logo_url && (
-            <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-7 max-w-[100px]" />
-          )}
+          {session.logo_url ? (
+            <div className="shrink-0 rounded-lg bg-white/95 p-1.5 flex items-center justify-center self-center">
+              <img src={session.logo_url} alt="Host logo" className="h-7 max-w-[100px] object-contain" decoding="async" />
+            </div>
+          ) : null}
           <a href="/" className="text-2xl font-bold text-white hover:opacity-80 transition-opacity shrink-0 tracking-tight">Query</a>
           <span className="text-white/30 text-lg font-light select-none">/</span>
           <div className="flex-1 min-w-0">

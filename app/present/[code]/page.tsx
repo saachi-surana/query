@@ -295,9 +295,11 @@ export default function PresentPage() {
         <div className="relative flex flex-col sm:flex-row items-center sm:justify-between gap-2">
           {/* Left: branding + session title */}
           <div className="flex flex-wrap items-baseline gap-3 min-w-0 text-center sm:text-left justify-center sm:justify-start">
-            {session.logo_url && (
-              <img src={session.logo_url} alt="Host logo" className="self-center shrink-0 object-contain h-8 max-w-[120px]" />
-            )}
+            {session.logo_url ? (
+              <div className="shrink-0 rounded-lg bg-white/95 p-1.5 flex items-center justify-center self-center">
+                <img src={session.logo_url} alt="Host logo" className="h-8 max-w-[120px] object-contain" decoding="async" />
+              </div>
+            ) : null}
             <a href="/" className="text-2xl font-bold text-white shrink-0 tracking-tight hover:opacity-80 transition-opacity">Query</a>
             {!isEmpty && (
               <>
