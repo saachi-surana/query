@@ -220,7 +220,6 @@ export default function SettingsPage() {
   }
 
   async function handleApplyToExisting() {
-    // First ensure branding is saved to localStorage
     if (defaultBrandColor) {
       localStorage.setItem('query-default-brand-color', defaultBrandColor)
     } else {
@@ -232,7 +231,6 @@ export default function SettingsPage() {
       localStorage.removeItem('query-default-logo-url')
     }
 
-    // Apply to current & upcoming sessions only (not past/ended ones)
     setApplyingToExisting(true)
     const updates: Record<string, string | null> = {
       logo_url: defaultLogoUrl || null,
