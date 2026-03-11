@@ -498,46 +498,59 @@ export default function CreatePage() {
             </div>
 
             {/* Brand color picker */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Brand Color</p>
+              {/* Preset swatches */}
               <div className="flex flex-wrap items-center gap-2">
                 {[
-                  { name: 'orange', hex: '#F97316' },
-                  { name: 'purple', hex: '#8B5CF6' },
-                  { name: 'blue', hex: '#3B82F6' },
-                  { name: 'green', hex: '#22C55E' },
-                  { name: 'red', hex: '#EF4444' },
-                  { name: 'teal', hex: '#14B8A6' },
-                  { name: 'pink', hex: '#EC4899' },
-                  { name: 'indigo', hex: '#6366F1' },
+                  { name: 'Orange', hex: '#F97316' },
+                  { name: 'Purple', hex: '#8B5CF6' },
+                  { name: 'Blue', hex: '#3B82F6' },
+                  { name: 'Green', hex: '#22C55E' },
+                  { name: 'Red', hex: '#EF4444' },
+                  { name: 'Teal', hex: '#14B8A6' },
+                  { name: 'Pink', hex: '#EC4899' },
+                  { name: 'Indigo', hex: '#6366F1' },
                 ].map((c) => (
                   <button
                     key={c.name}
                     type="button"
                     onClick={() => setBrandColor(brandColor === c.hex ? '' : c.hex)}
-                    className={`w-8 h-8 rounded-full transition-all ${
+                    className={`w-8 h-8 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-400 ${
                       brandColor === c.hex ? 'ring-2 ring-offset-2 ring-slate-900 scale-110' : 'hover:scale-105'
                     }`}
                     style={{ backgroundColor: c.hex }}
                     title={c.name}
+                    aria-label={`Select ${c.name} brand color`}
                   />
                 ))}
               </div>
+              {/* Eyedropper + hex input row */}
               <div className="flex items-center gap-2">
+                {/* Native color input (eyedropper) */}
+                <label className="relative cursor-pointer" title="Open color picker / eyedropper">
+                  <div
+                    className="w-9 h-9 rounded-xl border-2 border-slate-200 flex items-center justify-center hover:border-slate-300 transition-colors overflow-hidden"
+                    style={{ backgroundColor: brandColor && /^#[A-Fa-f0-9]{6}$/.test(brandColor) ? brandColor : '#f8fafc' }}
+                  >
+                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                  </div>
+                  <input
+                    type="color"
+                    value={brandColor && /^#[A-Fa-f0-9]{6}$/.test(brandColor) ? brandColor : '#6366F1'}
+                    onChange={(e) => setBrandColor(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    aria-label="Pick a custom color"
+                  />
+                </label>
                 <input
                   type="text"
                   value={brandColor}
                   onChange={(e) => setBrandColor(e.target.value)}
                   placeholder="#hexcode"
                   maxLength={7}
-                  className="w-32 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors font-mono"
+                  className="w-28 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent transition-colors font-mono"
                 />
-                {brandColor && /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(brandColor) && (
-                  <div
-                    className="w-8 h-8 rounded-lg border border-slate-200 shrink-0"
-                    style={{ backgroundColor: brandColor.startsWith('#') ? brandColor : `#${brandColor}` }}
-                  />
-                )}
                 {brandColor && (
                   <button
                     type="button"
@@ -548,6 +561,25 @@ export default function CreatePage() {
                   </button>
                 )}
               </div>
+              {/* Live preview */}
+              {brandColor && /^#[A-Fa-f0-9]{6}$/.test(brandColor) && (
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: brandColor }}>
+                    <span className="text-white text-sm font-semibold opacity-90">Query</span>
+                    <span className="text-white/50 text-sm">/</span>
+                    <span className="text-white/70 text-sm">Session Name</span>
+                  </div>
+                  <div className="px-4 py-3 bg-white flex items-center gap-3">
+                    <div className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: brandColor }}>
+                      Ask a question
+                    </div>
+                    <div className="px-3 py-1 rounded-full text-xs font-medium border" style={{ color: brandColor, borderColor: brandColor }}>
+                      Vote
+                    </div>
+                    <span className="text-xs text-slate-400">Preview</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

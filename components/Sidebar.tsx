@@ -30,7 +30,7 @@ export function Sidebar({
       {/* Sidebar backdrop (mobile) */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />}
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200 fixed sm:relative z-20 sm:z-auto h-[calc(100vh-48px)] sm:h-auto`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} shrink-0 bg-theme-sidebar-bg border-r border-theme-sidebar-border overflow-y-auto overflow-x-hidden transition-all duration-200 fixed top-12 sm:relative sm:top-auto z-20 sm:z-auto h-[calc(100vh-48px)] sm:h-auto`}>
         <div className="p-4 space-y-6 w-64">
           {/* Live Sessions */}
           {liveSessions.length > 0 && (

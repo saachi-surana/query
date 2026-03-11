@@ -103,6 +103,8 @@ export default function JoinPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [replies, setReplies] = useState<Reply[]>([])
   const [connected, setConnected] = useState(true)
+  const [attendedSessions, setAttendedSessions] = useState<Array<{ code: string; title: string }>>([])
+  const [switcherOpen, setSwitcherOpen] = useState(false)
 
   // Form state
   const [name, setName] = useState('')
@@ -136,7 +138,28 @@ export default function JoinPage() {
   // Initialize device ID and load persisted data from localStorage
   useEffect(() => {
     deviceIdRef.current = getDeviceId()
+    // Pre-fill attendee name from localStorage
+    const savedName = localStorage.getItem('query_attendee_name')
+    if (savedName) setName(savedName)
+    // Ensure anonymous attendee session ID exists
+    if (!localStorage.getItem('query_session_id')) {
+      localStorage.setItem('query_session_id', crypto.randomUUID())
+    }
   }, [])
+
+  // Track attended sessions in localStorage for session switcher
+  useEffect(() => {
+    if (!session) return
+    const stored = localStorage.getItem('query_attended_sessions')
+    let list: Array<{ code: string; title: string }> = []
+    try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
+    const exists = list.some((s) => s.code === session.code)
+    if (!exists) {
+      list = [{ code: session.code, title: session.title }, ...list].slice(0, 10)
+      localStorage.setItem('query_attended_sessions', JSON.stringify(list))
+    }
+    setAttendedSessions(list)
+  }, [session])
 
   useEffect(() => {
     if (!session) return
@@ -386,13 +409,23 @@ export default function JoinPage() {
     setSubmitting(true)
     setSubmitError('')
 
-    const { data, error } = await supabase.from('questions').insert({
+    const attendeeSessionId = typeof window !== 'undefined' ? localStorage.getItem('query_session_id') : null
+    const basePayload = {
       session_id: session.id,
       text,
       author_name: anonymous ? null : name.trim() || null,
       is_anonymous: anonymous,
       approved: !session.moderation_enabled,
+    }
+    let result = await supabase.from('questions').insert({
+      ...basePayload,
+      attendee_session_id: attendeeSessionId,
     }).select('id').single()
+    // If attendee_session_id column doesn't exist yet, retry without it
+    if (result.error && result.error.code === '42703') {
+      result = await supabase.from('questions').insert(basePayload).select('id').single()
+    }
+    const { data, error } = result
 
     if (error) {
       setSubmitError('Something went wrong. Please try again.')
@@ -419,7 +452,7 @@ export default function JoinPage() {
     setSubmitSuccess(true)
     setSubmitting(false)
     setQuestionText('')
-    setName('')
+    // Keep name populated for next question (persists via localStorage)
     setAnonymous(false)
     setSimilarQuestions([])
   }
@@ -433,6 +466,18 @@ export default function JoinPage() {
       author_name: anonymous ? null : name.trim() || null,
       is_host: false,
     })
+    // If the follow-up looks like a real question (has "?" or > 20 words), reopen the thread
+    const wordCount = text.trim().split(/\s+/).length
+    const looksLikeQuestion = text.includes('?') || wordCount > 20
+    if (looksLikeQuestion) {
+      const q = questions.find((q) => q.id === questionId)
+      if (q && q.status === 'answered') {
+        await supabase.from('questions').update({ status: 'pending' }).eq('id', questionId)
+        if (q.cluster_id) {
+          await supabase.from('clusters').update({ status: 'unanswered' }).eq('id', q.cluster_id)
+        }
+      }
+    }
   }
 
   function resetForm() {
@@ -517,6 +562,36 @@ export default function JoinPage() {
       {session.ended_at && (
         <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-sm text-slate-600 text-center shrink-0">
           This session has ended. Browse questions and answers below.
+        </div>
+      )}
+
+      {/* Session switcher (shows when attending multiple sessions) */}
+      {attendedSessions.length > 1 && (
+        <div className="relative shrink-0 bg-white border-b border-slate-200 px-4 py-2">
+          <button
+            onClick={() => setSwitcherOpen((o) => !o)}
+            className="flex items-center gap-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            aria-label="Switch session"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+            Switch session
+            <svg className={`w-3 h-3 transition-transform ${switcherOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {switcherOpen && (
+            <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 shadow-lg z-30 rounded-b-xl overflow-hidden">
+              {attendedSessions.map((s) => (
+                <a
+                  key={s.code}
+                  href={`/join/${s.code}`}
+                  className={`flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 transition-colors ${s.code === code ? 'bg-theme-primary-subtle text-theme-primary font-medium' : 'text-slate-700'}`}
+                  onClick={() => setSwitcherOpen(false)}
+                >
+                  <span className="truncate">{s.title}</span>
+                  <span className="font-mono text-xs text-slate-400 shrink-0 ml-2">{s.code}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -608,7 +683,12 @@ export default function JoinPage() {
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      if (e.target.value.trim()) {
+                        localStorage.setItem('query_attendee_name', e.target.value.trim())
+                      }
+                    }}
                     disabled={anonymous}
                     placeholder="Your name (optional)"
                     className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary focus:border-transparent disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"

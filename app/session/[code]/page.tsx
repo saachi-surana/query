@@ -246,7 +246,11 @@ export default function ModeratorPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `session_id=eq.${session.id}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setPolls((prev) => [payload.new as Poll, ...prev])
+            setPolls((prev) => {
+              // Guard against duplicates (React 18 strict mode fires effects twice in dev)
+              if (prev.some((p) => p.id === (payload.new as Poll).id)) return prev
+              return [payload.new as Poll, ...prev]
+            })
           } else if (payload.eventType === 'UPDATE') {
             setPolls((prev) =>
               prev.map((p) => (p.id === (payload.new as Poll).id ? (payload.new as Poll) : p))
@@ -600,6 +604,23 @@ export default function ModeratorPage() {
   const hasAnswered = answeredClusters.length > 0 || answeredUnclusteredQuestions.length > 0 || answeredOrphanQuestions.length > 0
 
   const totalQuestions = activeApprovedQuestions.length
+
+  // Compute which attendee session IDs have used multiple display names
+  const attendeeMultipleNamesSet = new Set<string>()
+  const attendeeNamesMap = new Map<string, Set<string>>()
+  for (const q of questions) {
+    if (q.attendee_session_id && !q.is_anonymous && q.author_name) {
+      const names = attendeeNamesMap.get(q.attendee_session_id) || new Set()
+      names.add(q.author_name)
+      attendeeNamesMap.set(q.attendee_session_id, names)
+    }
+  }
+  attendeeNamesMap.forEach((names, id) => {
+    if (names.size > 1) attendeeMultipleNamesSet.add(id)
+  })
+  function hasMultipleNames(q: Question): boolean {
+    return !!(q.attendee_session_id && attendeeMultipleNamesSet.has(q.attendee_session_id))
+  }
 
   if (notFound) {
     return (
@@ -988,7 +1009,7 @@ export default function ModeratorPage() {
             {unclusteredOpen && (
               <div className="space-y-3">
                 {unclusteredQuestions.map((q) => (
-                  <QuestionRow key={q.id} question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} onPin={handlePin} pinError={pinErrorQuestionId === q.id ? pinError : null} onArchive={archiveQuestion} />
+                  <QuestionRow key={q.id} question={q} replies={replies.filter((r) => r.question_id === q.id)} sessionId={session.id} onMarkAnswered={markQuestionAnswered} onMarkUnanswered={markQuestionUnanswered} onReply={handleHostReply} onPin={handlePin} pinError={pinErrorQuestionId === q.id ? pinError : null} onArchive={archiveQuestion} hasMultipleNames={hasMultipleNames(q)} />
                 ))}
               </div>
             )}
@@ -1059,6 +1080,7 @@ export default function ModeratorPage() {
                         onPin={handlePin}
                         pinError={pinErrorQuestionId === q.id ? pinError : null}
                         onArchive={archiveQuestion}
+                        hasMultipleNames={hasMultipleNames(q)}
                       />
                     ))}
                   </div>
@@ -1119,6 +1141,7 @@ export default function ModeratorPage() {
                     onMarkUnanswered={markQuestionUnanswered}
                     onReply={handleHostReply}
                     onArchive={archiveQuestion}
+                    hasMultipleNames={hasMultipleNames(q)}
                   />
                 ))}
               </div>
@@ -1173,7 +1196,7 @@ export default function ModeratorPage() {
             <ChevronIcon open={pollsOpen} />
           </button>
           {pollsOpen && (<div className="space-y-4">
-            <PollCreate sessionId={session.id} onCreated={loadPolls} />
+            <PollCreate sessionId={session.id} onCreated={() => {/* real-time subscription handles new polls */}} />
             {polls.map((poll) => (<div key={poll.id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
               <PollResults poll={poll} />
               <div className="flex items-center gap-2 pt-2 border-t border-slate-100">

@@ -282,46 +282,130 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sessionRows.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-3">
-                      <a href={`/session/${s.code}`} className="text-slate-900 font-medium hover:text-theme-primary transition-colors">
-                        {s.title}
-                      </a>
-                      <p className="text-xs text-slate-400 font-mono">{s.code}</p>
-                    </td>
-                    <td className="px-4 py-3 text-center text-slate-700">{s.questionCount}</td>
-                    <td className="px-4 py-3 text-center text-slate-700">{s.upvotes}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        s.answerRate >= 75 ? 'bg-green-100 text-green-700'
-                          : s.answerRate >= 50 ? 'bg-amber-100 text-amber-700'
-                            : s.questionCount === 0 ? 'bg-slate-100 text-slate-500'
-                              : 'bg-red-100 text-red-600'
-                      }`}>
-                        {s.answerRate}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center font-mono text-xs text-theme-primary">{s.engagementScore}</td>
-                    <td className="px-4 py-3 text-center">
-                      {s.ended_at ? (
-                        <span className="text-xs text-slate-400">Ended</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                          Live
-                        </span>
+                {(() => {
+                  // Group recurring sessions under their parent
+                  const parentRows = sessionRows.filter((s) => !s.recurrence_parent_id)
+                  const childMap = new Map<string, typeof sessionRows>()
+                  sessionRows.forEach((s) => {
+                    if (s.recurrence_parent_id) {
+                      const list = childMap.get(s.recurrence_parent_id) || []
+                      list.push(s)
+                      childMap.set(s.recurrence_parent_id, list)
+                    }
+                  })
+                  const rows: JSX.Element[] = []
+                  parentRows.forEach((s) => {
+                    const children = childMap.get(s.id) || []
+                    const isGroup = children.length > 0
+                    const groupKey = s.id
+                    const isExpanded = expandedSeries.has(groupKey)
+                    const formatDate = (iso: string) =>
+                      new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    rows.push(
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3">
+                          <div className="flex items-start gap-2">
+                            {isGroup && (
+                              <button
+                                onClick={() => setExpandedSeries((prev) => {
+                                  const next = new Set(prev)
+                                  next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey)
+                                  return next
+                                })}
+                                className="mt-0.5 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                                title={isExpanded ? 'Collapse series' : 'Expand series'}
+                                aria-label={isExpanded ? 'Collapse series' : 'Expand series'}
+                              >
+                                <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                              </button>
+                            )}
+                            <div>
+                              <a href={`/session/${s.code}`} className="text-slate-900 font-medium hover:text-theme-primary transition-colors">
+                                {s.title}
+                              </a>
+                              <p className="text-xs text-[#595959] mt-0.5">{formatDate(s.created_at)}</p>
+                              <p className="text-xs text-slate-400 font-mono">{s.code}</p>
+                              {isGroup && <p className="text-xs text-theme-primary mt-0.5">{children.length} recurring sessions</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center text-slate-700">{s.questionCount}</td>
+                        <td className="px-4 py-3 text-center text-slate-700">{s.upvotes}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            s.answerRate >= 75 ? 'bg-green-100 text-green-700'
+                              : s.answerRate >= 50 ? 'bg-amber-100 text-amber-700'
+                                : s.questionCount === 0 ? 'bg-slate-100 text-slate-500'
+                                  : 'bg-red-100 text-red-600'
+                          }`}>
+                            {s.answerRate}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono text-xs text-theme-primary">{s.engagementScore}</td>
+                        <td className="px-4 py-3 text-center">
+                          {s.ended_at ? (
+                            <span className="text-xs text-slate-400">Ended</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              Live
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                    if (isGroup && isExpanded) {
+                      children.forEach((child) => {
+                        rows.push(
+                          <tr key={child.id} className="hover:bg-slate-50 transition-colors bg-slate-50/50">
+                            <td className="px-6 py-2.5 pl-14">
+                              <a href={`/session/${child.code}`} className="text-slate-700 font-medium hover:text-theme-primary transition-colors text-sm">
+                                {child.title}
+                              </a>
+                              <p className="text-xs text-[#595959] mt-0.5">{formatDate(child.created_at)}</p>
+                              <p className="text-xs text-slate-400 font-mono">{child.code}</p>
+                            </td>
+                            <td className="px-4 py-2.5 text-center text-slate-700 text-sm">{child.questionCount}</td>
+                            <td className="px-4 py-2.5 text-center text-slate-700 text-sm">{child.upvotes}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                child.answerRate >= 75 ? 'bg-green-100 text-green-700'
+                                  : child.answerRate >= 50 ? 'bg-amber-100 text-amber-700'
+                                    : child.questionCount === 0 ? 'bg-slate-100 text-slate-500'
+                                      : 'bg-red-100 text-red-600'
+                              }`}>
+                                {child.answerRate}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-center font-mono text-xs text-theme-primary">{child.engagementScore}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              {child.ended_at ? (
+                                <span className="text-xs text-slate-400">Ended</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                  Live
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    }
+                  })
+                  return (
+                    <>
+                      {rows}
+                      {sessionRows.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                            No sessions yet. <a href="/create" className="text-theme-primary hover:underline">Create one</a>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
-                {sessionRows.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                      No sessions yet. <a href="/create" className="text-theme-primary hover:underline">Create one</a>
-                    </td>
-                  </tr>
-                )}
+                    </>
+                  )
+                })()}
               </tbody>
             </table>
           </div>

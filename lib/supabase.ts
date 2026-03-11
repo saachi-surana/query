@@ -37,6 +37,7 @@ export type Question = {
   upvotes: number
   is_pinned: boolean
   archived: boolean
+  attendee_session_id: string | null
   created_at: string
 }
 

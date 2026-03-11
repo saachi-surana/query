@@ -4,16 +4,47 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signUp } from '@/lib/auth'
 
+type PasswordReqs = {
+  minLength: boolean
+  uppercase: boolean
+  lowercase: boolean
+  number: boolean
+  special: boolean
+}
+
+function checkPassword(pw: string): PasswordReqs {
+  return {
+    minLength: pw.length >= 8,
+    uppercase: /[A-Z]/.test(pw),
+    lowercase: /[a-z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    special: /[!@#$%^&*]/.test(pw),
+  }
+}
+
+function passwordStrength(reqs: PasswordReqs): 0 | 1 | 2 | 3 {
+  const met = Object.values(reqs).filter(Boolean).length
+  if (met <= 1) return 0
+  if (met <= 3) return 1
+  if (met === 4) return 2
+  return 3
+}
+
 function SignupPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordTouched, setPasswordTouched] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [confirmTouched, setConfirmTouched] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  const pwReqs = checkPassword(password)
+  const pwStrength = passwordStrength(pwReqs)
+  const allReqsMet = Object.values(pwReqs).every(Boolean)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,8 +55,14 @@ function SignupPageInner() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+    if (!allReqsMet) {
+      const missing: string[] = []
+      if (!pwReqs.minLength) missing.push('at least 8 characters')
+      if (!pwReqs.uppercase) missing.push('an uppercase letter')
+      if (!pwReqs.lowercase) missing.push('a lowercase letter')
+      if (!pwReqs.number) missing.push('a number')
+      if (!pwReqs.special) missing.push('a special character (!@#$%^&*)')
+      setError(`Password must contain: ${missing.join(', ')}.`)
       return
     }
 
@@ -128,11 +165,51 @@ function SignupPageInner() {
                     id="password"
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    onChange={(e) => { setPassword(e.target.value); setPasswordTouched(true) }}
+                    placeholder="At least 8 characters"
                     required
                     className={inputClasses}
                   />
+                  {/* Strength bar */}
+                  {passwordTouched && password && (
+                    <div className="space-y-2 mt-1">
+                      <div className="flex gap-1">
+                        {[0,1,2,3].map((i) => (
+                          <div
+                            key={i}
+                            className={`h-1 flex-1 rounded-full transition-colors ${
+                              i < pwStrength
+                                ? pwStrength === 3 ? 'bg-emerald-500'
+                                  : pwStrength === 2 ? 'bg-amber-500'
+                                  : 'bg-red-400'
+                                : 'bg-slate-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className={`text-xs font-medium ${pwStrength === 3 ? 'text-emerald-600' : pwStrength === 2 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {pwStrength === 3 ? 'Strong' : pwStrength === 2 ? 'Good' : pwStrength === 1 ? 'Weak' : 'Too weak'}
+                      </p>
+                      <ul className="space-y-1">
+                        {[
+                          { met: pwReqs.minLength, label: 'At least 8 characters' },
+                          { met: pwReqs.uppercase, label: 'One uppercase letter (A-Z)' },
+                          { met: pwReqs.lowercase, label: 'One lowercase letter (a-z)' },
+                          { met: pwReqs.number, label: 'One number (0-9)' },
+                          { met: pwReqs.special, label: 'One special character (!@#$%^&*)' },
+                        ].map(({ met, label }) => (
+                          <li key={label} className={`flex items-center gap-1.5 text-xs ${met ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {met ? (
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" strokeWidth={2} /></svg>
+                            )}
+                            {label}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -167,7 +244,7 @@ function SignupPageInner() {
 
                 <button
                   type="submit"
-                  disabled={loading || !email.trim() || !password || !confirmPassword || password !== confirmPassword}
+                  disabled={loading || !email.trim() || !password || !confirmPassword || password !== confirmPassword || !allReqsMet}
                   className="w-full py-3 px-4 bg-theme-primary text-white rounded-2xl font-medium text-sm hover:bg-theme-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   {loading && (
