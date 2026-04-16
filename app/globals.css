@@ -25,18 +25,18 @@
 
   /* === VIBRANT MESH (landing page, header) === */
   --theme-mesh-base: #065F46;       /* orange-800: warm, not too dark */
-  --theme-mesh-1: rgba(251, 146, 60, 0.70);  /* orange-400, bright */
-  --theme-mesh-2: rgba(253, 224, 71, 0.50);  /* yellow-300, bright */
-  --theme-mesh-3: rgba(251, 191, 36, 0.50);  /* amber-400, warm */
-  --theme-mesh-4: rgba(253, 186, 116, 0.60); /* orange-300, light */
-  --theme-mesh-5: rgba(249, 115, 22, 0.50);  /* orange-500, core */
-  --theme-mesh-6: rgba(251, 146, 60, 0.40);  /* orange-400, fill */
-  --theme-mesh-7: rgba(254, 243, 199, 0.35); /* amber-100, soft glow */
-  --theme-mesh-center: rgba(253, 230, 138, 0.50); /* yellow-200, center brightness */
+  --theme-mesh-1: rgba(52, 211, 153, 0.70);  /* orange-400, bright */
+  --theme-mesh-2: rgba(110, 231, 183, 0.50);  /* yellow-300, bright */
+  --theme-mesh-3: rgba(16, 185, 129, 0.50);  /* amber-400, warm */
+  --theme-mesh-4: rgba(167, 243, 208, 0.60); /* orange-300, light */
+  --theme-mesh-5: rgba(5, 150, 105, 0.50);  /* orange-500, core */
+  --theme-mesh-6: rgba(52, 211, 153, 0.40);  /* orange-400, fill */
+  --theme-mesh-7: rgba(209, 250, 229, 0.35); /* amber-100, soft glow */
+  --theme-mesh-center: rgba(110, 231, 183, 0.50); /* yellow-200, center brightness */
 
   /* === TEXT ON MESH === */
   --theme-dark-subheading: rgba(255, 255, 255, 0.90);   /* white, high contrast */
-  --theme-dark-muted: rgba(255, 237, 213, 0.80);        /* orange-100, readable */
+  --theme-dark-muted: rgba(209, 250, 229, 0.80);        /* orange-100, readable */
   --theme-dark-accent: rgba(255, 255, 255, 0.75);       /* white, for icons */
   --theme-dark-divider: rgba(255, 255, 255, 0.20);      /* white line */
 
