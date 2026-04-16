@@ -17,14 +17,14 @@
   --foreground: #171717;
 
   /* === PRIMARY COLORS === */
-  --theme-primary: #F97316;         /* orange-500: buttons, links, focus */
-  --theme-primary-hover: #EA580C;   /* orange-600: button hover */
-  --theme-primary-light: #FFEDD5;   /* orange-100: badges, highlights */
-  --theme-primary-subtle: #FFF7ED;  /* orange-50: selected states */
-  --theme-primary-muted: #FB923C;   /* orange-400: muted accent text */
+  --theme-primary: #10B981;         /* orange-500: buttons, links, focus */
+  --theme-primary-hover: #059669;   /* orange-600: button hover */
+  --theme-primary-light: #D1FAE5;   /* orange-100: badges, highlights */
+  --theme-primary-subtle: #ECFDF5;  /* orange-50: selected states */
+  --theme-primary-muted: #34D399;   /* orange-400: muted accent text */
 
   /* === VIBRANT MESH (landing page, header) === */
-  --theme-mesh-base: #9a3412;       /* orange-800: warm, not too dark */
+  --theme-mesh-base: #065F46;       /* orange-800: warm, not too dark */
   --theme-mesh-1: rgba(251, 146, 60, 0.70);  /* orange-400, bright */
   --theme-mesh-2: rgba(253, 224, 71, 0.50);  /* yellow-300, bright */
   --theme-mesh-3: rgba(251, 191, 36, 0.50);  /* amber-400, warm */
@@ -55,9 +55,9 @@
   --theme-sidebar-text: #334155;       /* slate-700: readable */
   --theme-sidebar-text-hover: #0F172A; /* slate-900 */
   --theme-sidebar-hover-bg: #F8FAFC;   /* slate-50: barely visible hover */
-  --theme-sidebar-active-bg: #FFF7ED;  /* orange-50: warm active bg */
-  --theme-sidebar-active-text: #EA580C; /* orange-600 */
-  --theme-sidebar-section-label: #F97316; /* orange-500 */
+  --theme-sidebar-active-bg: #ECFDF5;  /* emerald-50: active bg */
+  --theme-sidebar-active-text: #059669; /* orange-600 */
+  --theme-sidebar-section-label: #10B981; /* orange-500 */
   --theme-sidebar-divider: #F1F5F9;    /* slate-100: clean divider */
 }
 
