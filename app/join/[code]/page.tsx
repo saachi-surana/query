@@ -562,8 +562,9 @@ export default function JoinPage() {
 
       {/* Session ended banner */}
       {session.ended_at && (
-        <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 text-sm text-slate-600 text-center shrink-0">
-          This session has ended. Browse questions and answers below.
+        <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 text-center shrink-0">
+          <p className="text-sm font-medium text-slate-700">This session has ended. Thank you for your questions!</p>
+          <p className="text-xs text-slate-500 mt-0.5">You can still browse questions and answers below.</p>
         </div>
       )}
 
@@ -608,6 +609,15 @@ export default function JoinPage() {
           </div>
         )
       })()}
+
+      {/* Live question counter */}
+      {questions.filter((q) => q.approved).length > 0 && (
+        <div className="bg-white border-b border-slate-100 px-4 py-2 text-center shrink-0">
+          <p className="text-xs text-slate-400">
+            {questions.filter((q) => q.approved).length} question{questions.filter((q) => q.approved).length !== 1 ? 's' : ''} asked so far in this session
+          </p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-white border-b border-slate-200 shrink-0">
@@ -655,24 +665,51 @@ export default function JoinPage() {
         {tab === 'ask' && !session.ended_at && (
           <div className="space-y-4">
             {submitSuccess || upvoted ? (
-              <div className={`rounded-2xl border p-6 text-center space-y-3 ${
+              <div className={`rounded-2xl border p-8 text-center space-y-4 ${
                 session.moderation_enabled && !upvoted
                   ? 'border-amber-200 bg-amber-50'
                   : 'border-green-200 bg-green-50'
               }`}>
-                <div className="text-3xl">{session.moderation_enabled && !upvoted ? '⏳' : '✓'}</div>
-                <p className={`font-medium ${
-                  session.moderation_enabled && !upvoted ? 'text-amber-800' : 'text-green-800'
-                }`}>
-                  {upvoted
-                    ? 'Thanks! Your upvote has been counted.'
-                    : session.moderation_enabled
-                      ? 'Your question has been submitted and is pending moderator review.'
-                      : 'Your question has been submitted!'}
-                </p>
+                {session.moderation_enabled && !upvoted ? (
+                  <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <p className={`font-semibold text-lg ${
+                    session.moderation_enabled && !upvoted ? 'text-amber-800' : 'text-green-800'
+                  }`}>
+                    {upvoted
+                      ? 'Thanks! Your upvote has been counted.'
+                      : session.moderation_enabled
+                        ? 'Question submitted!'
+                        : 'Your question has been submitted!'}
+                  </p>
+                  <p className={`text-sm ${
+                    session.moderation_enabled && !upvoted ? 'text-amber-700' : 'text-green-700'
+                  }`}>
+                    {upvoted
+                      ? 'The host will see this question is popular.'
+                      : session.moderation_enabled
+                        ? 'Pending moderator review before it appears.'
+                        : "We'll let you know when it's answered."}
+                  </p>
+                </div>
                 <button
                   onClick={resetForm}
-                  className="text-sm text-green-700 underline hover:no-underline"
+                  className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    session.moderation_enabled && !upvoted
+                      ? 'bg-amber-600 text-white hover:bg-amber-700'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
                 >
                   Ask another question
                 </button>

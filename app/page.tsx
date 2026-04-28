@@ -61,9 +61,9 @@ export default function HomePage() {
         {/* Logo + tagline */}
         <div className="text-center space-y-3">
           <h1 className="text-6xl font-bold tracking-tight text-white">Query</h1>
-          <p className="text-lg" style={{ color: 'var(--theme-dark-subheading)' }}>Smarter Q&amp;A for live events</p>
-          <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--theme-dark-muted)' }}>
-            AI-powered question clustering. Your audience asks, we organize, you answer what matters most.
+          <p className="text-xl font-semibold" style={{ color: 'var(--theme-dark-subheading)' }}>Ask smarter. Answer better.</p>
+          <p className="text-sm max-w-sm mx-auto leading-relaxed" style={{ color: 'var(--theme-dark-muted)' }}>
+            The Q&amp;A platform that actually works. AI clusters your audience&apos;s questions in real time so you can answer what matters most.
           </p>
         </div>
 
@@ -147,21 +147,46 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Feature highlights */}
-        <div className="grid grid-cols-3 gap-4 text-center">
-          {[
-            { icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z', title: 'AI Clustering', desc: 'Questions grouped by topic' },
-            { icon: 'M13 10V3L4 14h7v7l9-11h-7z', title: 'Real-time', desc: 'Live updates everywhere' },
-            { icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Free', desc: 'No limits, no paywall' },
-          ].map((f) => (
-            <div key={f.title} className="space-y-1.5">
-              <div className="w-8 h-8 mx-auto rounded-lg flex items-center justify-center" style={{ background: 'var(--theme-mesh-5)' }}>
-                <svg className="w-4 h-4" style={{ color: 'var(--theme-dark-subheading)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} /></svg>
+        {/* How it works */}
+        <div className="space-y-3">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--theme-dark-accent)' }}>
+            How it works
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              {
+                step: '1',
+                title: 'Audience submits questions',
+                desc: 'Anyone with the join code can ask anonymously or with their name',
+                icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+              },
+              {
+                step: '2',
+                title: 'AI groups them by topic instantly',
+                desc: 'Similar questions are automatically clustered in real time',
+                icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
+              },
+              {
+                step: '3',
+                title: 'Host answers once, addresses everyone',
+                desc: 'One answer covers every person who asked the same thing',
+                icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+              },
+            ].map((f) => (
+              <div key={f.step} className="rounded-2xl p-4 space-y-2" style={{ background: 'var(--theme-mesh-5)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-white/20 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    {f.step}
+                  </span>
+                  <svg className="w-4 h-4 shrink-0" style={{ color: 'var(--theme-dark-subheading)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold text-white leading-snug">{f.title}</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--theme-dark-muted)' }}>{f.desc}</p>
               </div>
-              <p className="text-sm font-semibold text-white">{f.title}</p>
-              <p className="text-xs" style={{ color: 'var(--theme-dark-muted)' }}>{f.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </main>

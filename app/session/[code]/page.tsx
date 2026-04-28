@@ -60,6 +60,8 @@ export default function ModeratorPage() {
   const [moderationBannerDismissed, setModerationBannerDismissed] = useState(false)
   const [answeredSubtab, setAnsweredSubtab] = useState<string>('misc')
   const [archivedOpen, setArchivedOpen] = useState(false)
+  const [endModalOpen, setEndModalOpen] = useState(false)
+  const [loadingDemo, setLoadingDemo] = useState(false)
 
   // Session context state
   const [contextEntries, setContextEntries] = useState<SessionContext[]>([])
@@ -488,6 +490,52 @@ export default function ModeratorPage() {
     setSession({ ...session, ended_at: null })
   }
 
+  async function confirmEndSession() {
+    if (!session) return
+    const now = new Date().toISOString()
+    await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id)
+    setSession({ ...session, ended_at: now })
+    setEndModalOpen(false)
+    router.push(`/session/${code}/report`)
+  }
+
+  async function loadDemoQuestions() {
+    if (!session || loadingDemo) return
+    setLoadingDemo(true)
+    const DEMO_QUESTIONS = [
+      'What does the interview process look like?',
+      'How many rounds are in the interview process?',
+      'What is the base salary for new grad engineers?',
+      'Are there stock options or equity for new employees?',
+      'How is the work-life balance at the company?',
+      'Is remote work available for engineering roles?',
+      'What is the culture like on the engineering team?',
+      'Is there mentorship available for new employees?',
+      'What does a typical day look like for engineers?',
+      'Are there return offer opportunities for interns?',
+      'How does the performance review process work?',
+      'What are the biggest challenges facing the team right now?',
+      'How much ownership do junior engineers get on projects?',
+      'What tech stack does your team use?',
+      'How quickly can new grads get promoted to senior roles?',
+    ]
+    await supabase.from('questions').insert(
+      DEMO_QUESTIONS.map((text) => ({
+        session_id: session!.id,
+        text,
+        author_name: null,
+        is_anonymous: true,
+        approved: !session!.moderation_enabled,
+      }))
+    )
+    fetch('/api/cluster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session!.id, mode: 'batch' }),
+    }).catch(() => {})
+    setLoadingDemo(false)
+  }
+
   async function handleHostReply(questionId: string, text: string) {
     if (!session) return
     await supabase.from('replies').insert({
@@ -556,7 +604,7 @@ export default function ModeratorPage() {
   function copyLink() {
     navigator.clipboard.writeText(attendeeUrl).then(() => {
       setCopied(true)
-      setCopyToast(attendeeUrl)
+      setCopyToast('Link copied!')
       setTimeout(() => { setCopied(false); setCopyToast(null) }, 3000)
     })
   }
@@ -709,25 +757,37 @@ export default function ModeratorPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {participantCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 {participantCount} attending
               </span>
             )}
-            {/* Code badge + copy icon */}
+            {/* Live question counter */}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {totalQuestions} question{totalQuestions !== 1 ? 's' : ''} submitted
+            </span>
+            {/* Copy Join Link button — very visible for demo day */}
             <button
               onClick={copyLink}
               title="Copy join link"
-              className="hidden sm:flex items-center gap-1.5 font-mono text-sm font-semibold px-2.5 py-1 rounded-lg transition-colors hover:opacity-80"
+              className="hidden sm:flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
               style={{ color: 'var(--theme-header-badge-text)', background: 'var(--theme-header-badge-bg)' }}
             >
-              {code}
               {copied ? (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Copied!
+                </>
               ) : (
-                <svg className="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                  Copy Join Link
+                </>
               )}
             </button>
             {/* QR code button */}
@@ -769,7 +829,7 @@ export default function ModeratorPage() {
               </button>
             ) : (
               <button
-                onClick={endSession}
+                onClick={() => setEndModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/80 text-sm font-medium text-white hover:bg-rose-600 transition-colors"
               >
                 End Session
@@ -808,7 +868,7 @@ export default function ModeratorPage() {
         <div className="fixed sm:absolute sm:top-14 sm:right-4 bottom-6 sm:bottom-auto left-1/2 sm:left-auto -translate-x-1/2 sm:translate-x-0 z-30 animate-[fadeIn_0.2s_ease-out]">
           <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm max-w-[90vw]">
             <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-            <span className="truncate font-mono text-xs">{copyToast}</span>
+            <span className="text-sm font-medium">{copyToast}</span>
             <button onClick={() => setCopyToast(null)} className="shrink-0 ml-1 text-white/50 hover:text-white transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
@@ -923,6 +983,36 @@ export default function ModeratorPage() {
                 <div className="text-2xl">3</div>
                 <p className="text-sm font-medium text-slate-700">Answer & reply</p>
                 <p className="text-xs text-slate-400">Mark clusters as answered or reply directly to questions</p>
+              </div>
+            </div>
+
+            {/* Demo mode */}
+            <div className="max-w-md mx-auto text-center pt-2">
+              <div className="border-t border-slate-200 pt-6 space-y-3">
+                <p className="text-xs text-slate-400">No attendees yet? Try a demo.</p>
+                <button
+                  onClick={loadDemoQuestions}
+                  disabled={loadingDemo}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-600 hover:border-theme-primary-light hover:text-theme-primary hover:bg-white disabled:opacity-50 transition-colors bg-white/50"
+                >
+                  {loadingDemo ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Loading demo questions…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      </svg>
+                      Load demo questions
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-slate-400">Loads 15 sample AMA questions · AI will cluster them automatically</p>
               </div>
             </div>
           </div>
@@ -1553,9 +1643,8 @@ export default function ModeratorPage() {
                 Export CSV
               </button>
               <a
-                href={`/report/${code}`}
-                target="_blank"
-                className="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+                href={`/session/${code}/report`}
+                className="block px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors"
               >
                 View Report
               </a>
@@ -1648,6 +1737,40 @@ export default function ModeratorPage() {
 
       {/* Floating emoji reactions */}
       <ReactionOverlay reactions={reactions} />
+
+      {/* End Session confirmation modal */}
+      {endModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setEndModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-slate-900">End this session?</h3>
+              <p className="text-sm text-slate-500">
+                Attendees will no longer be able to submit questions. You&apos;ll be taken to the session report.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEndModalOpen(false)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmEndSession}
+                className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-medium hover:bg-rose-700 transition-colors"
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
