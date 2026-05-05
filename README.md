@@ -92,6 +92,7 @@ npm run dev
 | Route | Description |
 |-------|-------------|
 | `/` | Home — join or host a session |
+| `/demo` | Interactive demo — no login or session required |
 | `/create` | Create a new session |
 | `/join/[code]` | Attendee view (Ask, All, Topics, Mine tabs) |
 | `/session/[code]` | Host/moderator dashboard |
